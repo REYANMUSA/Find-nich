@@ -1,0 +1,6 @@
+{
+  "name": "Find Niche",
+  "description": "A clean, minimal, mobile-first tech product discovery catalog with honest recommendations and direct Amazon Associates links.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
