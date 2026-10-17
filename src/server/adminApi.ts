@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from './supabaseRest';
-import { getAdminToken, verifyAdminToken } from './adminAuth';
+import type { VercelRequest, VercelResponse } from './supabaseRest.js';
+import { getAdminToken, verifyAdminToken } from './adminAuth.js';
 
 export function requireAdmin(req: VercelRequest, res: VercelResponse): boolean {
   if (!verifyAdminToken(getAdminToken(req))) {
@@ -16,7 +16,7 @@ export function methodNotAllowed(res: VercelResponse, allowed: string[]) {
 
 export async function writeAudit(action: string, details: string, targetId?: string) {
   try {
-    const { supabaseAdminRest } = await import('./supabaseRest');
+    const { supabaseAdminRest } = await import('./supabaseRest.js');
     await supabaseAdminRest('audit_logs', {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
