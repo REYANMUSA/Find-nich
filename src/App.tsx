@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { BottomTabBar } from './components/BottomTabBar';
 import { HomePage } from './pages/HomePage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
+import { CategoriesPage } from './pages/CategoriesPage';
+import { SearchPage } from './pages/SearchPage';
+import { SavedPage } from './pages/SavedPage';
 import { AboutPage } from './pages/AboutPage';
 import { AffiliateDisclosurePage } from './pages/AffiliateDisclosurePage';
 import { PrivacyPage } from './pages/PrivacyPage';
@@ -15,7 +19,7 @@ import { AdminProductFormPage } from './pages/admin/AdminProductFormPage';
 import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
 import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
-import { isAuthenticated } from './lib/api';
+import { isAuthenticated, adminCheckSession } from './lib/api';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(() => {
@@ -68,6 +72,14 @@ export default function App() {
       setAdminTab('audit');
     } else if (currentPath === '/admin') {
       setAdminTab('dashboard');
+    }
+
+    if (currentPath.startsWith('/admin') && currentPath !== '/admin/login') {
+      adminCheckSession().then((isValid: boolean) => {
+        if (!isValid && currentPath.startsWith('/admin')) {
+          setCurrentPath(currentPath);
+        }
+      });
     }
   }, [currentPath]);
 
@@ -183,6 +195,35 @@ export default function App() {
       );
     }
 
+    if (currentPath === '/categories') {
+      return (
+        <CategoriesPage
+          onSelectCategory={(categoryId) => {
+            navigate('/');
+          }}
+          onViewProduct={(slug) => navigate(`/product/${slug}`)}
+        />
+      );
+    }
+
+    if (currentPath === '/search') {
+      return (
+        <SearchPage
+          initialQuery={searchFilter}
+          onViewProduct={(slug) => navigate(`/product/${slug}`)}
+        />
+      );
+    }
+
+    if (currentPath === '/saved') {
+      return (
+        <SavedPage
+          onViewProduct={(slug) => navigate(`/product/${slug}`)}
+          onNavigateHome={() => navigate('/')}
+        />
+      );
+    }
+
     if (currentPath.startsWith('/product/')) {
       const slug = currentPath.replace('/product/', '').split('?')[0];
       return (
@@ -222,19 +263,31 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-zinc-900 selection:bg-zinc-900 selection:text-white">
-      {/* Show public navbar on non-admin views */}
+      {/* Show public navbar on non-admin views with 5-tap secret trigger */}
       {!isAdminView && (
-        <Navbar currentPath={currentPath} onNavigate={(path) => navigate(path)} />
+        <Navbar
+          currentPath={currentPath}
+          onNavigate={(path) => navigate(path)}
+          onSecretAdminTrigger={() => navigate('/admin')}
+        />
       )}
 
       {/* Main Page Content */}
-      <main className="flex-1">
+      <main className="flex-1 pb-16 md:pb-0">
         {renderContent()}
       </main>
 
       {/* Show public footer on non-admin views */}
       {!isAdminView && (
         <Footer onNavigate={(path) => navigate(path)} />
+      )}
+
+      {/* Show mobile bottom navigation bar on public pages (excluding product detail which has its own sticky action) */}
+      {!isAdminView && !currentPath.startsWith('/product/') && (
+        <BottomTabBar
+          currentPath={currentPath}
+          onNavigate={(path) => navigate(path)}
+        />
       )}
     </div>
   );

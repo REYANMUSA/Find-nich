@@ -31,7 +31,7 @@ export const AdminAuditLogsPage: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-zinc-950">Administrative Audit Trail</h1>
           <p className="text-xs text-zinc-500">
-            Immutable log of catalog mutations, publishing actions, and owner logins.
+            Historical log of catalog mutations, publishing actions, and owner sign-in events.
           </p>
         </div>
 

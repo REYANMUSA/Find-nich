@@ -96,7 +96,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onViewProduct, initialQuery 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by product name or item # (e.g. #001, 002, charger)..."
-            className="w-full h-11 pl-10 pr-10 text-sm bg-white border border-zinc-200 rounded-md text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900"
+            className="w-full h-11 pl-10 pr-10 text-sm bg-white border border-zinc-200 rounded-md text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#2E5B3E] focus:border-[#2E5B3E]"
           />
           {searchQuery && (
             <button
@@ -118,7 +118,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onViewProduct, initialQuery 
               onClick={() => setSelectedCategory('all')}
               className={`min-h-[36px] px-3.5 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap shrink-0 transition-colors ${
                 selectedCategory === 'all'
-                  ? 'bg-zinc-900 text-white shadow-xs'
+                  ? 'bg-[#2E5B3E] text-white shadow-xs'
                   : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-100'
               }`}
             >
@@ -132,7 +132,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onViewProduct, initialQuery 
                   onClick={() => setSelectedCategory(cat.id)}
                   className={`min-h-[36px] px-3.5 py-1.5 text-xs font-medium rounded-md whitespace-nowrap shrink-0 transition-colors ${
                     isSelected
-                      ? 'bg-zinc-900 text-white font-semibold shadow-xs'
+                      ? 'bg-[#2E5B3E] text-white font-semibold shadow-xs'
                       : 'bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-100'
                   }`}
                 >

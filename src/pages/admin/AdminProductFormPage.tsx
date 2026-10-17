@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, CheckCircle2, AlertCircle, Plus, Trash2, ShieldCheck, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Save, CheckCircle2, AlertCircle, Plus, Trash2, ShieldCheck, Upload, RefreshCw, X, Camera } from 'lucide-react';
 import { Product, Category, AmazonMarketplace } from '../../types';
 import { MARKETPLACES } from '../../data/initialData';
-import { adminFetchProductById, adminCreateProduct, adminUpdateProduct, adminFetchCategories } from '../../lib/api';
+import { adminFetchProductById, adminCreateProduct, adminUpdateProduct, adminFetchCategories, adminUploadPhoto } from '../../lib/api';
 
 interface AdminProductFormPageProps {
-  productId?: string | null; // null for new product
+  productId?: string | null;
   onBack: () => void;
   onSaved: (product: Product) => void;
 }
 
-// Preset verified photo references available for selection
-const PHOTO_PRESETS = [
-  { label: 'Ultra-Slim MagSafe Battery', path: '/src/assets/images/magsafe_power_bank_1791747842268.jpg' },
-  { label: '65W GaN Fast Charger', path: '/src/assets/images/gan_compact_charger_1791747854699.jpg' },
-  { label: 'Matte Monitor Screenbar', path: '/src/assets/images/desk_screenbar_light_1791747866894.jpg' },
-  { label: 'Vertical Ergonomic Mouse', path: '/src/assets/images/ergonomic_vertical_mouse_1791747877658.jpg' },
-  { label: 'Magnetic Cable Dock', path: '/src/assets/images/magnetic_cable_dock_1791747890185.jpg' },
+// Preset verified studio references available as secondary option
+const STUDIO_PRESETS = [
+  { label: 'Ultra-Slim MagSafe Battery', path: '/images/magsafe_power_bank_1791747842268.jpg' },
+  { label: '65W GaN Fast Charger', path: '/images/gan_compact_charger_1791747854699.jpg' },
+  { label: 'Matte Monitor Screenbar', path: '/images/desk_screenbar_light_1791747866894.jpg' },
+  { label: 'Vertical Ergonomic Mouse', path: '/images/ergonomic_vertical_mouse_1791747877658.jpg' },
+  { label: 'Magnetic Cable Dock', path: '/images/magnetic_cable_dock_1791747890185.jpg' },
 ];
 
 export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
@@ -25,24 +25,31 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
   onSaved,
 }) => {
   const isEditing = Boolean(productId);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form Fields
+  // Form Fields - Preserves input state across save failures
   const [permanentNumber, setPermanentNumber] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
-  const [imagePath, setImagePath] = useState(PHOTO_PRESETS[0].path);
+  const [imagePath, setImagePath] = useState('');
   const [affiliateUrl, setAffiliateUrl] = useState('');
   const [marketplaceCode, setMarketplaceCode] = useState<AmazonMarketplace>('US');
   const [status, setStatus] = useState<Product['status']>('draft');
   const [keyPoints, setKeyPoints] = useState<string[]>(['']);
   const [usefulFor, setUsefulFor] = useState<string[]>(['']);
   const [considerations, setConsiderations] = useState('');
+
+  // Upload state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccessMsg, setUploadSuccessMsg] = useState<string | null>(null);
+  const [showPresets, setShowPresets] = useState(false);
 
   // Live URL validation state
   const [urlValidation, setUrlValidation] = useState<{ valid: boolean; message: string }>({
@@ -66,7 +73,7 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
           setCategoryId(p.category_id);
           setShortDescription(p.short_description);
           setDescription(p.description || '');
-          setImagePath(p.image_path || PHOTO_PRESETS[0].path);
+          setImagePath(p.image_path || '');
           setAffiliateUrl(p.affiliate_url || '');
           setMarketplaceCode(p.marketplace_code || 'US');
           setStatus(p.status);
@@ -75,8 +82,8 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
           setConsiderations(p.considerations || '');
           setLoading(false);
         })
-        .catch(() => {
-          setError('Failed to load product details.');
+        .catch((err) => {
+          setError(err.message || 'Failed to load product details.');
           setLoading(false);
         });
     } else {
@@ -84,7 +91,34 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
     }
   }, [productId]);
 
-  // Validate affiliate URL as user types
+  // Handle Photo File Upload (Android / Desktop)
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Client-side quick size check (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File is too large. Images must be under 5MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+    setUploadSuccessMsg(null);
+
+    try {
+      const result = await adminUploadPhoto(file);
+      setImagePath(result.url);
+      setUploadSuccessMsg(`Photo uploaded: ${result.filename}`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload photo. Ensure it is a valid JPEG, PNG, or WEBP.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleUrlChange = (value: string) => {
     setAffiliateUrl(value);
     if (!value.trim()) {
@@ -92,15 +126,15 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
       return;
     }
     const trimmed = value.trim();
-    if (!trimmed.startsWith('https://') && !trimmed.startsWith('http://')) {
-      setUrlValidation({ valid: false, message: 'URL must start with https://' });
+    if (!trimmed.startsWith('https://')) {
+      setUrlValidation({ valid: false, message: 'URL must start with secure https://' });
       return;
     }
     try {
       const u = new URL(trimmed);
       const isAmazon = u.hostname.includes('amazon') || u.hostname.includes('amzn.to');
       if (!isAmazon) {
-        setUrlValidation({ valid: false, message: 'Domain must belong to Amazon (e.g. amazon.com or amzn.to)' });
+        setUrlValidation({ valid: false, message: 'Must be an official Amazon domain (e.g. amazon.com or amzn.to)' });
       } else {
         setUrlValidation({ valid: true, message: 'Valid Amazon destination' });
       }
@@ -146,6 +180,10 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
     if (status === 'published') {
       if (!imagePath) {
         setError('A product photo is required to publish.');
+        return;
+      }
+      if (!description.trim()) {
+        setError('Detailed recommendation description is required before publishing.');
         return;
       }
       if (!affiliateUrl.trim()) {
@@ -200,7 +238,7 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       
-      {/* Header */}
+      {/* Top Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
@@ -226,7 +264,7 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
             {isEditing ? `Edit Item #${permanentNumber?.toString().padStart(3, '0')}` : 'Add New Catalog Item'}
           </h1>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Original honest recommendations with validated Amazon Associates destination URLs.
+            Add genuine tech gear with high-resolution photography and validated Amazon Special Links.
           </p>
         </div>
 
@@ -234,6 +272,13 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
           <div className="p-3 bg-red-50 border border-red-200 rounded flex items-start gap-2 text-xs text-red-700">
             <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {uploadSuccessMsg && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded flex items-start gap-2 text-xs text-emerald-800">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span>{uploadSuccessMsg}</span>
           </div>
         )}
 
@@ -268,7 +313,7 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {c.name} {c.is_active ? '' : '(Inactive)'}
                   </option>
                 ))}
               </select>
@@ -292,51 +337,139 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
             </div>
           </div>
 
-          {/* Image Selection & Preview */}
-          <div className="space-y-3 pt-2 border-t border-zinc-100">
-            <label className="block text-xs font-semibold text-zinc-900">
-              Product Photo <span className="text-red-500">*</span>
-            </label>
-            
-            {/* Presets Gallery */}
-            <div className="space-y-1.5">
-              <span className="text-[11px] text-zinc-500">Select from studio photography library:</span>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {PHOTO_PRESETS.map((preset) => {
-                  const isSelected = imagePath === preset.path;
-                  return (
-                    <button
-                      key={preset.path}
-                      type="button"
-                      onClick={() => setImagePath(preset.path)}
-                      className={`relative aspect-[4/3] rounded border overflow-hidden p-0.5 text-left transition-all ${
-                        isSelected
-                          ? 'border-zinc-900 ring-2 ring-zinc-900/20'
-                          : 'border-zinc-200 hover:border-zinc-400 opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      <img
-                        src={preset.path}
-                        alt={preset.label}
-                        className="w-full h-full object-cover rounded-xs"
-                      />
-                    </button>
-                  );
-                })}
+          {/* PHOTO UPLOADING SECTION - Mobile & Android Friendly */}
+          <div className="space-y-3 pt-4 border-t border-zinc-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold text-zinc-900">
+                  Product Photo <span className="text-red-500">*</span>
+                </label>
+                <p className="text-[11px] text-zinc-500">
+                  Select a photo from your Android phone or computer (JPEG, PNG, WEBP up to 5MB).
+                </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPresets(!showPresets)}
+                className="text-xs font-medium text-zinc-600 hover:text-zinc-950 underline"
+              >
+                {showPresets ? 'Hide presets' : 'Studio presets'}
+              </button>
             </div>
 
-            {/* Custom Image Path / URL Input */}
-            <div className="space-y-1">
-              <span className="text-[11px] text-zinc-500">Or enter custom image path / URL:</span>
-              <input
-                type="text"
-                value={imagePath}
-                onChange={(e) => setImagePath(e.target.value)}
-                placeholder="/src/assets/images/... or https://..."
-                className="w-full h-9 px-3 text-xs font-mono bg-zinc-50 border border-zinc-200 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900"
-              />
+            {/* Hidden native file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileSelected}
+              className="hidden"
+            />
+
+            {/* Photo Preview & Action Container */}
+            <div className="border-2 border-dashed border-zinc-200 rounded-lg p-4 bg-zinc-50/50 hover:bg-zinc-50 transition-colors">
+              {imagePath ? (
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="relative aspect-[4/3] w-36 sm:w-44 bg-zinc-200 rounded-md overflow-hidden shrink-0 border border-zinc-300">
+                    <img
+                      src={imagePath}
+                      alt="Product preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 flex-1 text-center sm:text-left">
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-semibold text-zinc-900">Active Product Photo</p>
+                      <p className="text-[11px] font-mono text-zinc-500 truncate max-w-xs">{imagePath}</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="min-h-[44px] px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isUploading ? 'animate-spin' : ''}`} />
+                        <span>{isUploading ? 'Uploading...' : 'Replace Photo'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setImagePath('')}
+                        disabled={isUploading}
+                        className="min-h-[44px] px-3 py-2 bg-white border border-zinc-200 text-zinc-700 hover:text-red-600 hover:border-red-200 text-xs font-medium rounded flex items-center gap-1 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="py-8 flex flex-col items-center justify-center text-center cursor-pointer space-y-3"
+                >
+                  <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs sm:text-sm font-semibold text-zinc-900">
+                      Tap here to upload a photo
+                    </p>
+                    <p className="text-[11px] text-zinc-500">
+                      Works directly with Android phone camera or gallery · 4:3 ratio recommended
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    className="min-h-[44px] px-4 py-2 bg-zinc-900 text-white text-xs font-semibold rounded flex items-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isUploading ? 'Uploading photo...' : 'Select Photo'}</span>
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Collapsible Studio Presets */}
+            {showPresets && (
+              <div className="p-3 bg-zinc-100/70 border border-zinc-200 rounded-lg space-y-2">
+                <span className="text-[11px] font-semibold text-zinc-700 block">
+                  Studio Photography Library Presets:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {STUDIO_PRESETS.map((preset) => {
+                    const isSelected = imagePath === preset.path;
+                    return (
+                      <button
+                        key={preset.path}
+                        type="button"
+                        onClick={() => {
+                          setImagePath(preset.path);
+                          setUploadSuccessMsg(null);
+                        }}
+                        className={`relative aspect-[4/3] rounded border overflow-hidden p-0.5 text-left transition-all ${
+                          isSelected
+                            ? 'border-zinc-900 ring-2 ring-zinc-900/20'
+                            : 'border-zinc-200 hover:border-zinc-400 opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <img
+                          src={preset.path}
+                          alt={preset.label}
+                          className="w-full h-full object-cover rounded-xs"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Short Description */}
@@ -525,8 +658,8 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
             </button>
             <button
               type="submit"
-              disabled={submitting}
-              className="min-h-[40px] px-5 py-2 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-xs"
+              disabled={submitting || isUploading}
+              className="min-h-[40px] px-5 py-2 text-xs font-semibold text-white bg-[#2E5B3E] hover:bg-[#234832] rounded flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-xs active:scale-[0.99]"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{submitting ? 'Saving...' : isEditing ? 'Update Product' : 'Create Product'}</span>

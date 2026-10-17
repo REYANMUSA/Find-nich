@@ -13,7 +13,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         {/* Amazon Associates Mandatory Compliance Disclosure Box */}
         <div className="mb-10 p-4 sm:p-5 bg-white border border-zinc-200 rounded-lg">
           <div className="flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-zinc-900 shrink-0 mt-0.5" />
+            <ShieldCheck className="w-5 h-5 text-[#2E5B3E] shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-semibold text-zinc-900">
                 “As an Amazon Associate I earn from qualifying purchases.”
@@ -29,7 +29,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div className="md:col-span-2 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded bg-zinc-900 text-white text-[10px] font-mono font-bold flex items-center justify-center">
+              <span className="w-5 h-5 rounded bg-[#2E5B3E] text-white text-[10px] font-mono font-bold flex items-center justify-center shadow-xs">
                 FN
               </span>
               <span className="font-bold text-zinc-900">Find Niche</span>
@@ -81,19 +81,20 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-900 mb-3">
-              Administration
+              Trust & Quality
             </p>
             <ul className="space-y-2 text-xs">
-              <li>
-                <button
-                  onClick={() => onNavigate('/admin')}
-                  className="hover:text-zinc-900 transition-colors text-left"
-                >
-                  Owner Portal
-                </button>
+              <li className="text-zinc-600">
+                Official Amazon Associates Link
               </li>
-              <li className="text-zinc-400">
-                Independent Curation
+              <li className="text-zinc-600">
+                Independent Hardware Curation
+              </li>
+              <li className="text-zinc-600">
+                Zero Tracker / Privacy First
+              </li>
+              <li className="text-zinc-400 text-[11px] pt-1">
+                Developed by REYANMUSA
               </li>
             </ul>
           </div>

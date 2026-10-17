@@ -36,7 +36,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 border border-zinc-200 rounded-lg bg-zinc-50/50 space-y-2">
-            <Compass className="w-5 h-5 text-zinc-900" />
+            <Compass className="w-5 h-5 text-[#2E5B3E]" />
             <h3 className="text-sm font-semibold text-zinc-900">Restraint Over Volume</h3>
             <p className="text-xs text-zinc-600 leading-relaxed">
               We do not catalog thousands of generic items. Every item is indexed with a permanent item number and selected for everyday practical utility.
@@ -44,7 +44,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
           </div>
 
           <div className="p-4 border border-zinc-200 rounded-lg bg-zinc-50/50 space-y-2">
-            <Eye className="w-5 h-5 text-zinc-900" />
+            <Eye className="w-5 h-5 text-[#2E5B3E]" />
             <h3 className="text-sm font-semibold text-zinc-900">Honest Evaluation</h3>
             <p className="text-xs text-zinc-600 leading-relaxed">
               We highlight both advantages and limitations. If a power bank is only 5,000mAh or a mouse is right-hand only, we state it plainly.
@@ -52,7 +52,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
           </div>
 
           <div className="p-4 border border-zinc-200 rounded-lg bg-zinc-50/50 space-y-2">
-            <Shield className="w-5 h-5 text-zinc-900" />
+            <Shield className="w-5 h-5 text-[#2E5B3E]" />
             <h3 className="text-sm font-semibold text-zinc-900">Direct Compliance</h3>
             <p className="text-xs text-zinc-600 leading-relaxed">
               We link directly to official Amazon listings using transparent Special Links. Checkout, fulfillment, and customer support are handled by Amazon.

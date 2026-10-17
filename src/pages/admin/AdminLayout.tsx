@@ -1,6 +1,6 @@
 import React from 'react';
 import { LayoutDashboard, Package, FolderTree, BarChart3, History, LogOut, ExternalLink, Plus } from 'lucide-react';
-import { clearAdminToken } from '../../lib/api';
+import { adminLogout } from '../../lib/api';
 
 interface AdminLayoutProps {
   currentTab: 'dashboard' | 'products' | 'categories' | 'analytics' | 'audit';
@@ -27,8 +27,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     { id: 'audit', label: 'Audit Log', icon: History },
   ] as const;
 
-  const handleLogoutClick = () => {
-    clearAdminToken();
+  const handleLogoutClick = async () => {
+    await adminLogout();
     onLogout();
   };
 

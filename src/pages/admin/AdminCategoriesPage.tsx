@@ -87,7 +87,7 @@ export const AdminCategoriesPage: React.FC = () => {
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="min-h-[40px] px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded flex items-center gap-1.5 transition-colors self-start sm:self-auto shadow-xs"
+            className="min-h-[40px] px-4 py-2 bg-[#2E5B3E] hover:bg-[#234832] text-white text-xs font-semibold rounded flex items-center gap-1.5 transition-colors self-start sm:self-auto shadow-xs active:scale-[0.99]"
           >
             <Plus className="w-4 h-4" />
             <span>Add Category</span>

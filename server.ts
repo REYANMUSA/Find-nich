@@ -1,334 +1,320 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
+import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
-import { INITIAL_CATEGORIES, INITIAL_PRODUCTS, MARKETPLACES } from './src/data/initialData';
-import { Product, Category, ProductClick, AuditLog, AmazonMarketplace } from './src/types/index';
+import { dbService } from './src/server/db';
+import { validateProductPayload, validateAffiliateUrl } from './src/server/validation';
+import { uploadMiddleware, saveUploadedImage, deleteUploadedImage } from './src/server/upload';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, 'data');
-const DB_FILE = path.join(DATA_DIR, 'db.json');
+const PORT = Number(process.env.PORT) || 3000;
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
+const SESSION_COOKIE_NAME = 'fn_admin_session';
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Setup Express application
+const app = express();
+
+// Trust proxy for secure cookies on hosting platforms (Cloud Run, Render, Vercel, etc.)
+app.set('trust proxy', 1);
+
+app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
+
+// Static file serving for uploads and product images
+const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
+app.use('/uploads', express.static(path.join(PUBLIC_DIR, 'uploads'), {
+  maxAge: '7d',
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  },
+}));
+app.use('/images', express.static(path.join(PUBLIC_DIR, 'images'), {
+  maxAge: '7d',
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  },
+}));
+app.use(express.static(PUBLIC_DIR));
+
+// Rate Limiting Store for Login and Clicks (in-memory sliding window)
+interface RateLimitBucket {
+  count: number;
+  resetAt: number;
+}
+const loginRateLimits = new Map<string, RateLimitBucket>();
+const clickRateLimits = new Map<string, RateLimitBucket>();
+
+function checkRateLimit(
+  map: Map<string, RateLimitBucket>,
+  key: string,
+  maxRequests: number,
+  windowMs: number
+): boolean {
+  const now = Date.now();
+  const bucket = map.get(key);
+
+  if (!bucket || now > bucket.resetAt) {
+    map.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+
+  if (bucket.count >= maxRequests) {
+    return false;
+  }
+
+  bucket.count += 1;
+  return true;
 }
 
-interface DatabaseSchema {
-  products: Product[];
-  categories: Category[];
-  clicks: ProductClick[];
-  audit_logs: AuditLog[];
-  next_product_number: number;
-}
-
-// In-memory + persisted file DB
-let db: DatabaseSchema = {
-  products: [...INITIAL_PRODUCTS],
-  categories: [...INITIAL_CATEGORIES],
-  clicks: [],
-  audit_logs: [
-    {
-      id: 'audit-init',
-      action: 'system.init',
-      details: 'Find Niche database initialized with default catalog.',
-      timestamp: new Date().toISOString(),
-    },
-  ],
-  next_product_number: 7,
-};
-
-function loadDatabase() {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      const content = fs.readFileSync(DB_FILE, 'utf-8');
-      const parsed = JSON.parse(content);
-      db = {
-        products: parsed.products || INITIAL_PRODUCTS,
-        categories: parsed.categories || INITIAL_CATEGORIES,
-        clicks: parsed.clicks || [],
-        audit_logs: parsed.audit_logs || [],
-        next_product_number: parsed.next_product_number || 7,
-      };
-      // Ensure sequence safety: next_product_number is at least max(product_number) + 1
-      const maxNum = Math.max(0, ...db.products.map(p => p.product_number || 0));
-      if (db.next_product_number <= maxNum) {
-        db.next_product_number = maxNum + 1;
-      }
-    } else {
-      saveDatabase();
-    }
-  } catch (err) {
-    console.error('Failed to load db.json, using defaults:', err);
-    saveDatabase();
+// Clean up rate limits every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of loginRateLimits.entries()) {
+    if (now > v.resetAt) loginRateLimits.delete(k);
   }
-}
-
-function saveDatabase() {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed to write db.json:', err);
+  for (const [k, v] of clickRateLimits.entries()) {
+    if (now > v.resetAt) clickRateLimits.delete(k);
   }
-}
+}, 10 * 60 * 1000);
 
-loadDatabase();
+// Authentication Middleware: Server-side sessions
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  let sessionToken = req.cookies?.[SESSION_COOKIE_NAME];
 
-// Security: Amazon Affiliate URL validation
-const ALLOWED_AMAZON_DOMAINS = [
-  'amazon.com',
-  'www.amazon.com',
-  'amzn.to',
-  'amazon.co.uk',
-  'www.amazon.co.uk',
-  'amazon.ca',
-  'www.amazon.ca',
-  'amazon.de',
-  'www.amazon.de',
-  'amazon.fr',
-  'www.amazon.fr',
-  'amazon.es',
-  'www.amazon.es',
-  'amazon.it',
-  'www.amazon.it',
-  'amazon.co.jp',
-  'www.amazon.co.jp',
-  'amazon.com.au',
-  'www.amazon.com.au',
-];
-
-export function validateAffiliateUrl(rawUrl: string): { valid: boolean; reason?: string } {
-  if (!rawUrl || typeof rawUrl !== 'string') {
-    return { valid: false, reason: 'Affiliate URL is required.' };
+  // Also accept standard Bearer token header as alternate transport
+  if (!sessionToken && req.headers.authorization?.startsWith('Bearer ')) {
+    sessionToken = req.headers.authorization.substring(7).trim();
   }
-  const trimmed = rawUrl.trim();
-  if (!trimmed.startsWith('https://') && !trimmed.startsWith('http://')) {
-    return { valid: false, reason: 'URL must begin with http:// or https://' };
-  }
-  try {
-    const parsed = new URL(trimmed);
-    const hostname = parsed.hostname.toLowerCase();
-    const isAllowed = ALLOWED_AMAZON_DOMAINS.some(domain => 
-      hostname === domain || hostname.endsWith('.' + domain)
-    );
-    if (!isAllowed) {
-      return { 
-        valid: false, 
-        reason: `Destination domain "${hostname}" is not an authorized Amazon Associates domain. Must be Amazon or amzn.to.` 
-      };
-    }
-    return { valid: true };
-  } catch {
-    return { valid: false, reason: 'Invalid URL structure.' };
-  }
-}
 
-// Authentication token verification
-const ADMIN_MASTER_TOKEN = process.env.ADMIN_TOKEN || 'findniche_admin_secure_token_2026';
-
-function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!sessionToken) {
     return res.status(401).json({
-      error: { code: 'UNAUTHORIZED', message: 'Administrator credentials required.' }
+      error: { code: 'UNAUTHORIZED', message: 'Administrator session required. Please sign in.' },
     });
   }
-  const token = authHeader.substring(7).trim();
-  if (token !== ADMIN_MASTER_TOKEN) {
-    return res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Invalid or expired administrative token.' }
+
+  const session = dbService.getSession(sessionToken);
+  if (!session) {
+    // Clear invalid cookie if present
+    res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
+    return res.status(401).json({
+      error: { code: 'SESSION_EXPIRED', message: 'Session expired or invalid. Please sign in again.' },
     });
   }
+
+  // Session valid
+  (req as any).adminSessionId = session.id;
   next();
 }
 
-function logAudit(action: string, details: string, target_id?: string) {
-  const log: AuditLog = {
-    id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-    action,
-    details,
-    target_id,
-    timestamp: new Date().toISOString(),
-  };
-  db.audit_logs.unshift(log);
-  if (db.audit_logs.length > 200) {
-    db.audit_logs = db.audit_logs.slice(0, 200);
-  }
-  saveDatabase();
-}
-
-// Setup Express
-const app = express();
-app.use(express.json({ limit: '10mb' }));
-
-// Health Check Endpoint
+// Health Check Endpoint (safe, reveals no internal secrets)
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'Find Niche API',
     timestamp: new Date().toISOString(),
-    product_count: db.products.filter(p => !p.deleted_at).length,
+    admin_configured: Boolean(ADMIN_PASSCODE),
   });
 });
 
-// Admin authentication verification
+// Admin: Session status check
+app.get('/api/admin/session', (req, res) => {
+  let sessionToken = req.cookies?.[SESSION_COOKIE_NAME];
+  if (!sessionToken && req.headers.authorization?.startsWith('Bearer ')) {
+    sessionToken = req.headers.authorization.substring(7).trim();
+  }
+
+  if (!sessionToken) {
+    return res.json({ authenticated: false });
+  }
+
+  const session = dbService.getSession(sessionToken);
+  if (!session) {
+    return res.json({ authenticated: false });
+  }
+
+  return res.json({ authenticated: true, role: 'owner' });
+});
+
+// Admin: Login endpoint with rate limiting & server-side session
 app.post('/api/admin/login', (req, res) => {
-  const { passcode } = req.body;
-  const configuredPasscode = process.env.ADMIN_PASSCODE || 'findniche2026';
-  
-  if (passcode === configuredPasscode) {
-    logAudit('admin.login_success', 'Administrator authenticated successfully.');
-    return res.json({
-      success: true,
-      token: ADMIN_MASTER_TOKEN,
-      role: 'owner',
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+
+  // Rate limit: max 5 login attempts per 15 minutes per IP
+  if (!checkRateLimit(loginRateLimits, clientIp, 5, 15 * 60 * 1000)) {
+    return res.status(429).json({
+      error: {
+        code: 'TOO_MANY_ATTEMPTS',
+        message: 'Too many failed login attempts. Please wait 15 minutes before trying again.',
+      },
     });
   }
-  logAudit('admin.login_failed', 'Failed login attempt.');
-  return res.status(401).json({
-    error: { code: 'INVALID_CREDENTIALS', message: 'Incorrect administrator passcode.' }
+
+  const { passcode } = req.body;
+
+  // Safe startup rule: if ADMIN_PASSCODE is not configured, admin login cannot succeed
+  if (!ADMIN_PASSCODE) {
+    console.error('[SECURITY ALERT] Login attempted but ADMIN_PASSCODE environment variable is not configured.');
+    return res.status(503).json({
+      error: {
+        code: 'AUTH_NOT_CONFIGURED',
+        message: 'Admin access has not been configured by the owner on this instance.',
+      },
+    });
+  }
+
+  // Constant-time comparison to prevent timing attacks
+  const inputBuffer = Buffer.from(String(passcode || ''));
+  const targetBuffer = Buffer.from(String(ADMIN_PASSCODE));
+
+  const isMatch =
+    inputBuffer.length === targetBuffer.length &&
+    crypto.timingSafeEqual(inputBuffer, targetBuffer);
+
+  if (!isMatch) {
+    dbService.addAuditLog('admin.login_failed', `Failed sign-in attempt from IP: ${clientIp}`, undefined, 'guest');
+    return res.status(401).json({
+      error: { code: 'INVALID_CREDENTIALS', message: 'Incorrect administrator passcode.' },
+    });
+  }
+
+  // Login successful: Generate cryptographically secure session ID
+  const sessionId = crypto.randomBytes(32).toString('hex');
+  const sessionDurationMs = 4 * 60 * 60 * 1000; // 4 hours
+  const expiresAt = new Date(Date.now() + sessionDurationMs);
+
+  const ipHash = crypto.createHash('sha256').update(clientIp).digest('hex').substring(0, 16);
+  dbService.createSession(sessionId, expiresAt, ipHash);
+  dbService.addAuditLog('admin.login_success', 'Owner signed in successfully.', undefined, 'owner');
+
+  // Set secure HttpOnly cookie
+  const isProd = process.env.NODE_ENV === 'production';
+  res.cookie(SESSION_COOKIE_NAME, sessionId, {
+    httpOnly: true,
+    secure: isProd || req.secure || req.headers['x-forwarded-proto'] === 'https',
+    sameSite: 'lax',
+    path: '/',
+    expires: expiresAt,
+  });
+
+  return res.json({
+    success: true,
+    token: sessionId, // Returned for client bearer fallback if cookies blocked
+    role: 'owner',
+    expires_at: expiresAt.toISOString(),
   });
 });
 
-// Public: Get Categories
+// Admin: Logout endpoint
+app.post('/api/admin/logout', (req, res) => {
+  let sessionToken = req.cookies?.[SESSION_COOKIE_NAME];
+  if (!sessionToken && req.headers.authorization?.startsWith('Bearer ')) {
+    sessionToken = req.headers.authorization.substring(7).trim();
+  }
+
+  if (sessionToken) {
+    dbService.deleteSession(sessionToken);
+  }
+
+  res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
+  res.json({ success: true, message: 'Signed out.' });
+});
+
+// Public: Get Active Categories
 app.get('/api/categories', (req, res) => {
-  const activeCategories = db.categories
-    .filter(c => c.is_active)
-    .sort((a, b) => a.display_order - b.display_order);
+  const activeCategories = dbService.getCategories(true);
   res.json({ categories: activeCategories });
 });
 
 // Public: Get Published Products with search, category & pagination
+// STRICT SECURITY REQUIREMENT: Only returns status = 'published' AND deleted_at IS NULL
 app.get('/api/products', (req, res) => {
-  const {
-    q,
-    category,
-    sort = 'latest',
-    page = '1',
-    limit = '12',
-  } = req.query;
+  const { q, category, sort, page, limit } = req.query;
 
-  let results = db.products.filter(p => p.status === 'published' && !p.deleted_at);
-
-  // Category filter
-  if (category && category !== 'all') {
-    results = results.filter(p => p.category_id === category || p.category_id === `cat-${category}`);
-  }
-
-  // Search filter
-  if (q && typeof q === 'string') {
-    const rawQuery = q.trim();
-    const queryLower = rawQuery.toLowerCase();
-    
-    // Check if searching by product number: e.g. "30", "#30", "#030", "030"
-    const numberMatch = rawQuery.match(/^#?0*(\d+)$/);
-    if (numberMatch) {
-      const searchedNum = parseInt(numberMatch[1], 10);
-      results = results.filter(p => 
-        p.product_number === searchedNum ||
-        p.name.toLowerCase().includes(queryLower) ||
-        p.short_description.toLowerCase().includes(queryLower)
-      );
-    } else {
-      results = results.filter(p =>
-        p.name.toLowerCase().includes(queryLower) ||
-        p.short_description.toLowerCase().includes(queryLower) ||
-        p.description.toLowerCase().includes(queryLower)
-      );
-    }
-  }
-
-  // Sorting
-  if (sort === 'num_asc') {
-    results.sort((a, b) => a.product_number - b.product_number);
-  } else if (sort === 'num_desc') {
-    results.sort((a, b) => b.product_number - a.product_number);
-  } else if (sort === 'clicks') {
-    results.sort((a, b) => (b.click_count || 0) - (a.click_count || 0));
-  } else {
-    // Default: latest published first
-    results.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }
-
-  const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
-  const limitNum = Math.max(1, Math.min(50, parseInt(limit as string, 10) || 12));
-  const total = results.length;
-  const paginated = results.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+  const result = dbService.getPublicProducts({
+    q: q ? String(q) : undefined,
+    category: category ? String(category) : undefined,
+    sort: sort ? String(sort) : undefined,
+    page: page ? parseInt(String(page), 10) : 1,
+    limit: limit ? parseInt(String(limit), 10) : 12,
+  });
 
   res.json({
-    products: paginated,
+    products: result.products,
     pagination: {
-      total,
-      page: pageNum,
-      limit: limitNum,
-      totalPages: Math.ceil(total / limitNum),
-      hasMore: pageNum * limitNum < total,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages,
+      hasMore: result.hasMore,
     },
   });
 });
 
 // Public: Get Single Product by Slug
+// STRICT SECURITY REQUIREMENT: Only returns published products. Non-published return 404!
 app.get('/api/products/:slug', (req, res) => {
   const { slug } = req.params;
-  const product = db.products.find(p => p.slug === slug && !p.deleted_at);
+  const product = dbService.getPublicProductBySlug(slug);
 
   if (!product) {
     return res.status(404).json({
-      error: { code: 'NOT_FOUND', message: 'Product not found.' }
+      error: { code: 'NOT_FOUND', message: 'Product not found.' },
     });
   }
-
-  // Increment view count quietly
-  product.view_count = (product.view_count || 0) + 1;
-  saveDatabase();
 
   res.json({ product });
 });
 
 // Public: Track Safe Product Click
+// STRICT RATE LIMITING & SECURITY REQUIREMENT: Published products only, zero PII
 app.post('/api/clicks', (req, res) => {
-  const { product_id, source = 'catalog_card' } = req.body;
-  if (!product_id) {
-    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Product ID required.' } });
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+
+  // Max 30 clicks per minute per IP to prevent artificial inflation
+  if (!checkRateLimit(clickRateLimits, clientIp, 30, 60 * 1000)) {
+    return res.status(429).json({ error: { code: 'TOO_MANY_REQUESTS', message: 'Rate limit exceeded.' } });
   }
 
-  const product = db.products.find(p => p.id === product_id);
-  if (product) {
-    product.click_count = (product.click_count || 0) + 1;
-    const clickRecord: ProductClick = {
-      id: `click-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      product_id: product.id,
-      product_name: product.name,
-      product_number: product.product_number,
-      clicked_at: new Date().toISOString(),
-      source: source || 'catalog_card',
-    };
-    db.clicks.unshift(clickRecord);
-    if (db.clicks.length > 500) {
-      db.clicks = db.clicks.slice(0, 500);
-    }
-    saveDatabase();
+  const { product_id, source = 'catalog_card' } = req.body;
+  if (!product_id || typeof product_id !== 'string') {
+    return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Valid product ID required.' } });
+  }
+
+  const allowedSources = ['catalog_card', 'product_detail', 'related_products', 'direct'];
+  const safeSource = allowedSources.includes(source) ? source : 'catalog_card';
+
+  const success = dbService.recordClick(product_id, safeSource);
+  if (!success) {
+    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Product is not available for click tracking.' } });
   }
 
   res.json({ success: true });
 });
 
-// --- ADMIN ENDPOINTS (Protected) ---
+// --- ADMIN ENDPOINTS (Protected with requireAdmin) ---
 
 // Admin: Get all products (including drafts, hidden, archived)
 app.get('/api/admin/products', requireAdmin, (req, res) => {
-  const allProducts = db.products
-    .filter(p => !p.deleted_at)
-    .sort((a, b) => b.product_number - a.product_number);
-  res.json({ products: allProducts });
+  const products = dbService.getAdminProducts();
+  res.json({ products });
 });
 
-// Admin: Get single product by ID (even draft/hidden)
+// Admin: Get single product by ID
 app.get('/api/admin/products/:id', requireAdmin, (req, res) => {
-  const product = db.products.find(p => p.id === req.params.id && !p.deleted_at);
+  const product = dbService.getAdminProductById(req.params.id);
+  if (!product) {
+    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Product not found.' } });
+  }
+  res.json({ product });
+});
+
+// Admin: Preview product by slug even if draft or hidden
+app.get('/api/admin/products/by-slug/:slug', requireAdmin, (req, res) => {
+  const product = dbService.getAdminProductBySlug(req.params.slug);
   if (!product) {
     return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Product not found.' } });
   }
@@ -337,213 +323,122 @@ app.get('/api/admin/products/:id', requireAdmin, (req, res) => {
 
 // Admin: Create Product
 app.post('/api/admin/products', requireAdmin, (req, res) => {
-  const {
-    name,
-    category_id,
-    short_description,
-    description = '',
-    key_points = [],
-    useful_for = [],
-    considerations = '',
-    image_path = '',
-    affiliate_url = '',
-    marketplace_code = 'US',
-    status = 'draft',
-  } = req.body;
+  const isPublishing = req.body.status === 'published';
+  const validation = validateProductPayload(req.body, dbService, isPublishing);
 
-  if (!name || !category_id || !short_description) {
-    return res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'Name, Category, and Short description are required.' }
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  try {
+    const product = dbService.createProduct({
+      name: req.body.name.trim(),
+      category_id: req.body.category_id,
+      short_description: req.body.short_description.trim(),
+      description: req.body.description ? req.body.description.trim() : '',
+      key_points: Array.isArray(req.body.key_points) ? req.body.key_points : [],
+      useful_for: Array.isArray(req.body.useful_for) ? req.body.useful_for : [],
+      considerations: req.body.considerations ? req.body.considerations.trim() : '',
+      image_path: req.body.image_path ? req.body.image_path.trim() : '',
+      affiliate_url: req.body.affiliate_url ? req.body.affiliate_url.trim() : '',
+      marketplace_code: req.body.marketplace_code || 'US',
+      status: req.body.status || 'draft',
     });
+
+    res.status(201).json({ product });
+  } catch (err: any) {
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to create product.' } });
   }
-
-  // If publishing immediately, require image & valid affiliate URL
-  if (status === 'published') {
-    if (!image_path) {
-      return res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Product photo is required before publishing.' }
-      });
-    }
-    const urlCheck = validateAffiliateUrl(affiliate_url);
-    if (!urlCheck.valid) {
-      return res.status(400).json({
-        error: { code: 'INVALID_AFFILIATE_URL', message: urlCheck.reason }
-      });
-    }
-  }
-
-  // Safe sequential permanent product number
-  const assignedNumber = db.next_product_number;
-  db.next_product_number += 1;
-
-  // Base slug generator
-  let baseSlug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
-  if (!baseSlug) baseSlug = `product-${assignedNumber}`;
-
-  let finalSlug = baseSlug;
-  let counter = 1;
-  while (db.products.some(p => p.slug === finalSlug && !p.deleted_at)) {
-    finalSlug = `${baseSlug}-${counter}`;
-    counter++;
-  }
-
-  const now = new Date().toISOString();
-  const newProduct: Product = {
-    id: `prod-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    product_number: assignedNumber,
-    slug: finalSlug,
-    name: name.trim(),
-    short_description: short_description.trim(),
-    description: description.trim(),
-    key_points: Array.isArray(key_points) ? key_points : [],
-    useful_for: Array.isArray(useful_for) ? useful_for : [],
-    considerations: considerations.trim(),
-    category_id,
-    image_path: image_path || '/src/assets/images/magsafe_power_bank_1791747842268.jpg',
-    affiliate_url: affiliate_url.trim(),
-    marketplace_code: marketplace_code as AmazonMarketplace,
-    status: status as Product['status'],
-    created_at: now,
-    updated_at: now,
-    published_at: status === 'published' ? now : null,
-    deleted_at: null,
-    view_count: 0,
-    click_count: 0,
-  };
-
-  db.products.push(newProduct);
-  saveDatabase();
-  logAudit('product.created', `Created product #${assignedNumber}: "${newProduct.name}" (${newProduct.status})`, newProduct.id);
-
-  res.status(201).json({ product: newProduct });
 });
 
 // Admin: Update Product
 app.patch('/api/admin/products/:id', requireAdmin, (req, res) => {
-  const { id } = req.params;
-  const product = db.products.find(p => p.id === id && !p.deleted_at);
-
-  if (!product) {
+  const existing = dbService.getAdminProductById(req.params.id);
+  if (!existing) {
     return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Product not found.' } });
   }
 
-  const {
-    name,
-    category_id,
-    short_description,
-    description,
-    key_points,
-    useful_for,
-    considerations,
-    image_path,
-    affiliate_url,
-    marketplace_code,
-    status,
-  } = req.body;
+  const merged = { ...existing, ...req.body };
+  const isPublishing = merged.status === 'published';
+  const validation = validateProductPayload(merged, dbService, isPublishing);
 
-  if (affiliate_url) {
-    const urlCheck = validateAffiliateUrl(affiliate_url);
-    if (!urlCheck.valid) {
-      return res.status(400).json({
-        error: { code: 'INVALID_AFFILIATE_URL', message: urlCheck.reason }
-      });
-    }
-    product.affiliate_url = affiliate_url.trim();
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
   }
 
-  if (name) product.name = name.trim();
-  if (category_id) product.category_id = category_id;
-  if (short_description) product.short_description = short_description.trim();
-  if (description !== undefined) product.description = description.trim();
-  if (key_points !== undefined) product.key_points = key_points;
-  if (useful_for !== undefined) product.useful_for = useful_for;
-  if (considerations !== undefined) product.considerations = considerations.trim();
-  if (image_path) product.image_path = image_path;
-  if (marketplace_code) product.marketplace_code = marketplace_code;
-  
-  if (status && status !== product.status) {
-    product.status = status;
-    if (status === 'published' && !product.published_at) {
-      product.published_at = new Date().toISOString();
-    }
+  try {
+    const updated = dbService.updateProduct(req.params.id, req.body);
+    res.json({ product: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to update product.' } });
   }
-
-  product.updated_at = new Date().toISOString();
-  saveDatabase();
-  logAudit('product.updated', `Updated product #${product.product_number}: "${product.name}"`, product.id);
-
-  res.json({ product });
 });
 
 // Admin: Publish Product
 app.post('/api/admin/products/:id/publish', requireAdmin, (req, res) => {
-  const product = db.products.find(p => p.id === req.params.id && !p.deleted_at);
-  if (!product) {
+  const existing = dbService.getAdminProductById(req.params.id);
+  if (!existing) {
     return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Product not found.' } });
   }
 
-  if (!product.image_path) {
-    return res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'A product photo is required to publish.' }
-    });
+  // Shared validation check
+  const merged = { ...existing, status: 'published' };
+  const validation = validateProductPayload(merged, dbService, true);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
   }
 
-  const urlCheck = validateAffiliateUrl(product.affiliate_url);
-  if (!urlCheck.valid) {
-    return res.status(400).json({
-      error: { code: 'INVALID_AFFILIATE_URL', message: urlCheck.reason }
-    });
-  }
-
-  product.status = 'published';
-  product.published_at = new Date().toISOString();
-  product.updated_at = new Date().toISOString();
-  saveDatabase();
-  logAudit('product.published', `Published product #${product.product_number}: "${product.name}"`, product.id);
-
-  res.json({ product });
+  const published = dbService.publishProduct(req.params.id);
+  res.json({ product: published });
 });
 
 // Admin: Hide Product
 app.post('/api/admin/products/:id/hide', requireAdmin, (req, res) => {
-  const product = db.products.find(p => p.id === req.params.id && !p.deleted_at);
-  if (!product) {
+  const hidden = dbService.hideProduct(req.params.id);
+  if (!hidden) {
     return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Product not found.' } });
   }
-
-  product.status = 'hidden';
-  product.updated_at = new Date().toISOString();
-  saveDatabase();
-  logAudit('product.hidden', `Hid product #${product.product_number}: "${product.name}"`, product.id);
-
-  res.json({ product });
+  res.json({ product: hidden });
 });
 
-// Admin: Soft Delete Product (never resets permanent sequence)
+// Admin: Soft Delete Product (never reuses permanent number)
 app.delete('/api/admin/products/:id', requireAdmin, (req, res) => {
-  const product = db.products.find(p => p.id === req.params.id && !p.deleted_at);
-  if (!product) {
+  const success = dbService.softDeleteProduct(req.params.id);
+  if (!success) {
     return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Product not found.' } });
   }
-
-  product.deleted_at = new Date().toISOString();
-  product.status = 'archived';
-  saveDatabase();
-  logAudit('product.deleted', `Soft-deleted product #${product.product_number}: "${product.name}"`, product.id);
-
-  res.json({ success: true, message: `Product #${product.product_number} deleted.` });
+  res.json({ success: true, message: 'Product archived. Permanent product number reserved.' });
 });
 
-// Admin: Category Management
+// Admin: Image Upload Endpoint
+app.post('/api/admin/uploads', requireAdmin, uploadMiddleware.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: { code: 'NO_FILE', message: 'No image file was received.' } });
+  }
+
+  try {
+    const result = saveUploadedImage(req.file.buffer);
+    dbService.addAuditLog('image.uploaded', `Uploaded product photo: ${result.filename} (${Math.round(result.size / 1024)} KB)`);
+    res.status(201).json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: { code: 'INVALID_IMAGE', message: err.message || 'Image processing failed.' } });
+  }
+});
+
+// Admin: Delete Uploaded Image
+app.delete('/api/admin/uploads/:filename', requireAdmin, (req, res) => {
+  const success = deleteUploadedImage(req.params.filename);
+  if (!success) {
+    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found or already removed.' } });
+  }
+  dbService.addAuditLog('image.deleted', `Removed image: ${req.params.filename}`);
+  res.json({ success: true });
+});
+
+// Admin: Categories Management
 app.get('/api/admin/categories', requireAdmin, (req, res) => {
-  const categoriesWithCounts = db.categories.map(c => {
-    const productCount = db.products.filter(p => !p.deleted_at && p.category_id === c.id).length;
-    return { ...c, product_count: productCount };
-  });
-  res.json({ categories: categoriesWithCounts });
+  const categories = dbService.getCategories(false);
+  res.json({ categories });
 });
 
 app.post('/api/admin/categories', requireAdmin, (req, res) => {
@@ -552,107 +447,49 @@ app.post('/api/admin/categories', requireAdmin, (req, res) => {
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Category name is required.' } });
   }
 
-  const trimmed = name.trim();
-  const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-
-  if (db.categories.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) {
-    return res.status(409).json({ error: { code: 'CONFLICT', message: 'A category with this name already exists.' } });
+  try {
+    const category = dbService.createCategory(name, display_order);
+    res.status(201).json({ category });
+  } catch (err: any) {
+    if (err.message?.includes('UNIQUE constraint failed')) {
+      return res.status(409).json({ error: { code: 'CONFLICT', message: 'A category with this name already exists.' } });
+    }
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to create category.' } });
   }
-
-  const newCat: Category = {
-    id: `cat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    name: trimmed,
-    slug,
-    display_order: display_order || db.categories.length + 1,
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  db.categories.push(newCat);
-  saveDatabase();
-  logAudit('category.created', `Created category "${newCat.name}"`, newCat.id);
-
-  res.status(201).json({ category: newCat });
 });
 
 app.patch('/api/admin/categories/:id', requireAdmin, (req, res) => {
-  const cat = db.categories.find(c => c.id === req.params.id);
-  if (!cat) {
+  const updated = dbService.updateCategory(req.params.id, req.body);
+  if (!updated) {
     return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Category not found.' } });
   }
-
-  const { name, is_active, display_order } = req.body;
-  if (name) {
-    cat.name = name.trim();
-    cat.slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  }
-  if (is_active !== undefined) cat.is_active = Boolean(is_active);
-  if (display_order !== undefined) cat.display_order = Number(display_order);
-
-  cat.updated_at = new Date().toISOString();
-  saveDatabase();
-  logAudit('category.updated', `Updated category "${cat.name}"`, cat.id);
-
-  res.json({ category: cat });
+  res.json({ category: updated });
 });
 
 // Admin: Analytics Summary
 app.get('/api/admin/analytics', requireAdmin, (req, res) => {
-  const activeProducts = db.products.filter(p => !p.deleted_at);
-  const publishedCount = activeProducts.filter(p => p.status === 'published').length;
-  const draftCount = activeProducts.filter(p => p.status === 'draft').length;
-  const hiddenCount = activeProducts.filter(p => p.status === 'hidden').length;
-
-  const totalClicks = db.clicks.length;
-  const clicksByProduct = activeProducts
-    .map(p => ({
-      id: p.id,
-      number: p.product_number,
-      name: p.name,
-      clicks: p.click_count || 0,
-      views: p.view_count || 0,
-      affiliate_url: p.affiliate_url,
-    }))
-    .sort((a, b) => b.clicks - a.clicks);
-
-  // Click sources breakdown
-  const sourcesMap: Record<string, number> = {};
-  db.clicks.forEach(c => {
-    sourcesMap[c.source] = (sourcesMap[c.source] || 0) + 1;
-  });
-
-  res.json({
-    summary: {
-      total_products: activeProducts.length,
-      published_products: publishedCount,
-      draft_products: draftCount,
-      hidden_products: hiddenCount,
-      total_categories: db.categories.length,
-      total_clicks: totalClicks,
-    },
-    top_products: clicksByProduct,
-    sources: sourcesMap,
-    recent_clicks: db.clicks.slice(0, 30),
-  });
+  const analytics = dbService.getAnalyticsSummary();
+  res.json(analytics);
 });
 
 // Admin: Audit Logs
 app.get('/api/admin/audit-logs', requireAdmin, (req, res) => {
-  res.json({ logs: db.audit_logs });
+  const logs = dbService.getAuditLogs(100);
+  res.json({ logs });
 });
 
-// Admin: Export Catalog Data
+// Admin: Catalog Export
 app.get('/api/admin/export', requireAdmin, (req, res) => {
+  const products = dbService.getAdminProducts();
+  const categories = dbService.getCategories(false);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', 'attachment; filename=find-niche-catalog-export.json');
   res.json({
-    exported_at: new Date().toISOString(),
     store: 'Find Niche',
+    exported_at: new Date().toISOString(),
     catalog: {
-      products: db.products.filter(p => !p.deleted_at),
-      categories: db.categories,
-      next_product_number: db.next_product_number,
+      products,
+      categories,
     },
   });
 });
@@ -669,7 +506,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(__dirname, 'dist');
+    const distPath = path.resolve(__dirname, 'dist');
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
       app.get('*', (req, res) => {
@@ -678,8 +515,11 @@ async function startServer() {
     }
   }
 
-  app.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`Find Niche server running on http://0.0.0.0:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Find Niche] Server running on http://0.0.0.0:${PORT}`);
+    if (!ADMIN_PASSCODE) {
+      console.warn('[Find Niche WARN] ADMIN_PASSCODE environment variable is NOT set. Set ADMIN_PASSCODE in .env or your host dashboard to enable owner administration.');
+    }
   });
 }
 

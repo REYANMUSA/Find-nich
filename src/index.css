@@ -1,9 +1,18 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand: #2E5B3E;
+  --color-brand-hover: #234832;
+  --color-brand-active: #1d3c2a;
+  --color-brand-subtle: #eaf3ed;
+}
+
 @layer base {
   :root {
     --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    --brand-primary: #2E5B3E;
+    --brand-primary-hover: #234832;
   }
 
   body {
