@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../src/server/supabaseRest';
 import { supabaseReady, supabaseRest } from '../src/server/supabaseRest';
+import { adminConfigured } from '../src/server/adminAuth';
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
   if (!supabaseReady()) {
@@ -16,7 +17,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       service: 'Find Niche API',
       database: 'connected',
       timestamp: new Date().toISOString(),
-      admin_configured: false,
+      admin_configured: adminConfigured(),
     });
   } catch {
     return res.status(503).json({ status: 'error', service: 'Find Niche API', database: 'unavailable' });
