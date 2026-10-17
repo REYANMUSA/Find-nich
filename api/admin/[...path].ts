@@ -14,7 +14,23 @@ function fail(res: VercelResponse, status: number, message: string) {
 }
 function pathParts(req: VercelRequest): string[] {
   const value = req.query?.path;
-  return (Array.isArray(value) ? value : typeof value === 'string' ? value.split('/') : []).map(String);
+  const queryParts = (Array.isArray(value) ? value : typeof value === 'string' ? value.split('/') : [])
+    .map(String)
+    .filter(Boolean);
+
+  // Some deployment/request adapters may omit the catch-all query parameter.
+  // Recover the route from the URL so /api/admin/login cannot fall through
+  // into requireAdmin and return a misleading "Please sign in again" error.
+  if (queryParts.length) return queryParts;
+
+  const requestUrl = typeof req.url === 'string' ? req.url : '';
+  const pathname = requestUrl.split('?')[0];
+  const adminPrefix = '/api/admin/';
+  if (pathname.startsWith(adminPrefix)) {
+    return pathname.slice(adminPrefix.length).split('/').filter(Boolean);
+  }
+
+  return [];
 }
 function needDatabase(res: VercelResponse): boolean {
   if (supabaseAdminReady()) return true;
