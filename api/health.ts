@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '../src/server/supabaseRest.js';
 import { supabaseReady, supabaseRest } from '../src/server/supabaseRest.js';
-import { adminConfigured } from '../src/server/adminAuth';
+import { adminConfigured } from '../src/server/adminAuth.js';
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
   if (!supabaseReady()) {
