@@ -1,3 +1,10 @@
+export type VercelRequest = { method?: string; query: Record<string, any>; body: any };
+export type VercelResponse = {
+  status(code: number): VercelResponse;
+  json(body: any): any;
+  setHeader(name: string, value: string): void;
+};
+
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
