@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from '../../src/server/supabaseRest';
-import { supabaseReady, supabaseRest } from '../../src/server/supabaseRest';
+import type { VercelRequest, VercelResponse } from '../../src/server/supabaseRest.js';
+import { supabaseReady, supabaseRest } from '../../src/server/supabaseRest.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const slug = typeof req.query.slug === 'string' ? req.query.slug : '';
