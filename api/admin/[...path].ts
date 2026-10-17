@@ -13,7 +13,7 @@ function fail(res: VercelResponse, status: number, message: string) {
   return res.status(status).json({ error: { message } });
 }
 function pathParts(req: VercelRequest): string[] {
-  const value = req.query.path;
+  const value = req.query?.path;
   return (Array.isArray(value) ? value : typeof value === 'string' ? value.split('/') : []).map(String);
 }
 function needDatabase(res: VercelResponse): boolean {
