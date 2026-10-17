@@ -1,4 +1,9 @@
-export type VercelRequest = { method?: string; query: Record<string, any>; body: any };
+export type VercelRequest = {
+  method?: string;
+  query: Record<string, any>;
+  body: any;
+  headers?: Record<string, string | string[] | undefined>;
+};
 export type VercelResponse = {
   status(code: number): VercelResponse;
   json(body: any): any;
