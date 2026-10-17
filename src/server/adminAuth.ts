@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { VercelRequest } from './supabaseRest';
+import type { VercelRequest } from './supabaseRest.js';
 
 const COOKIE_NAME = 'fn_admin_session';
 const SESSION_SECONDS = 4 * 60 * 60;
