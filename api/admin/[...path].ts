@@ -1,7 +1,7 @@
-import type { VercelRequest, VercelResponse } from '../../src/server/supabaseRest';
-import { adminConfigured, adminCookie, clearAdminCookie, createAdminToken, getAdminToken, verifyAdminToken, verifyPasscode } from '../../src/server/adminAuth';
-import { isObject, methodNotAllowed, requireAdmin, slugify, writeAudit } from '../../src/server/adminApi';
-import { supabaseAdminReady, supabaseAdminRest } from '../../src/server/supabaseRest';
+import type { VercelRequest, VercelResponse } from '../../src/server/supabaseRest.js';
+import { adminConfigured, adminCookie, clearAdminCookie, createAdminToken, getAdminToken, verifyAdminToken, verifyPasscode } from '../../src/server/adminAuth.js';
+import { isObject, methodNotAllowed, requireAdmin, slugify, writeAudit } from '../../src/server/adminApi.js';
+import { supabaseAdminReady, supabaseAdminRest } from '../../src/server/supabaseRest.js';
 
 let loginAttempts = 0;
 let loginWindowStartedAt = Date.now();
