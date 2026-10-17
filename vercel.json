@@ -1,8 +1,13 @@
 {
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/admin/:path*", "destination": "/index.html" },
+    { "source": "/product/:path*", "destination": "/index.html" },
+    { "source": "/categories", "destination": "/index.html" },
+    { "source": "/search", "destination": "/index.html" },
+    { "source": "/saved", "destination": "/index.html" },
+    { "source": "/about", "destination": "/index.html" },
+    { "source": "/affiliate-disclosure", "destination": "/index.html" },
+    { "source": "/privacy", "destination": "/index.html" }
   ]
 }
