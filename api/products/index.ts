@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../../src/server/supabaseRest';
 import { supabaseReady, supabaseRest } from '../../src/server/supabaseRest';
 
 type Row = Record<string, any>;
