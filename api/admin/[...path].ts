@@ -24,7 +24,14 @@ function pathParts(req: VercelRequest): string[] {
   if (queryParts.length) return queryParts;
 
   const requestUrl = typeof req.url === 'string' ? req.url : '';
-  const pathname = requestUrl.split('?')[0];
+  let pathname = requestUrl.split('?')[0];
+  // Vercel adapters may expose req.url as either a path or an absolute URL.
+  // Normalize both forms before recovering the catch-all route.
+  try {
+    pathname = new URL(requestUrl, 'http://localhost').pathname;
+  } catch {
+    // Keep the best-effort path parsed above.
+  }
   const adminPrefix = '/api/admin/';
   if (pathname.startsWith(adminPrefix)) {
     return pathname.slice(adminPrefix.length).split('/').filter(Boolean);
