@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from '../src/server/supabaseRest';
-import { supabaseReady, supabaseRest } from '../src/server/supabaseRest';
+import type { VercelRequest, VercelResponse } from '../src/server/supabaseRest.js';
+import { supabaseReady, supabaseRest } from '../src/server/supabaseRest.js';
 import { adminConfigured } from '../src/server/adminAuth';
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
