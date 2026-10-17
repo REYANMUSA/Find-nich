@@ -12,6 +12,11 @@ export type VercelResponse = {
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+export function supabaseAdminReady(): boolean {
+  return Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+}
 
 export function supabaseReady(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -41,4 +46,20 @@ export async function supabaseRest(
 
 export function sendError(res: any, status: number, message: string) {
   return res.status(status).json({ error: { message } });
+}
+
+
+/** Server-only privileged access. Use only after verifying the signed admin session. */
+export async function supabaseAdminRest(
+  resource: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  if (!supabaseAdminReady()) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
+  }
+  const headers = new Headers(init.headers);
+  headers.set('apikey', SUPABASE_SERVICE_ROLE_KEY);
+  headers.set('Authorization', `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`);
+  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  return fetch(`${SUPABASE_URL}/rest/v1/${resource}`, { ...init, headers, cache: 'no-store' });
 }
