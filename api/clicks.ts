@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from '../src/server/supabaseRest';
+import type { VercelRequest, VercelResponse } from '../src/server/supabaseRest.js';
 import { randomUUID } from 'node:crypto';
-import { supabaseReady, supabaseRest } from '../src/server/supabaseRest';
+import { supabaseReady, supabaseRest } from '../src/server/supabaseRest.js';
 
 const ALLOWED_SOURCES = new Set(['catalog_card', 'product_detail', 'related_products', 'direct']);
 
