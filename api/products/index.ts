@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from '../../src/server/supabaseRest';
-import { supabaseReady, supabaseRest } from '../../src/server/supabaseRest';
+import type { VercelRequest, VercelResponse } from '../../src/server/supabaseRest.js';
+import { supabaseReady, supabaseRest } from '../../src/server/supabaseRest.js';
 
 type Row = Record<string, any>;
 
