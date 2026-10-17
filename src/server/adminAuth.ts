@@ -52,13 +52,7 @@ export function verifyAdminToken(token: string | undefined, now = Date.now()): b
   }
 }
 
-export function getAdminToken(req: VercelRequest): string | undefined {
-  const auth = req.headers?.authorization;
-  const authorization = Array.isArray(auth) ? auth[0] : auth;
-  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
-    return authorization.slice(7).trim();
-  }
-
+function readCookie(req: VercelRequest): string | undefined {
   const rawCookie = req.headers?.cookie;
   const cookieHeader = Array.isArray(rawCookie) ? rawCookie[0] : rawCookie;
   if (typeof cookieHeader !== 'string') return undefined;
@@ -68,6 +62,25 @@ export function getAdminToken(req: VercelRequest): string | undefined {
     if (name === COOKIE_NAME) return rest.join('=');
   }
   return undefined;
+}
+
+export function getAdminToken(req: VercelRequest): string | undefined {
+  // Prefer a valid bearer token, but don't let a stale/invalid browser token
+  // shadow a valid HttpOnly session cookie.
+  const auth = req.headers?.authorization;
+  const authorization = Array.isArray(auth) ? auth[0] : auth;
+  const bearer = typeof authorization === 'string' && authorization.startsWith('Bearer ')
+    ? authorization.slice(7).trim()
+    : undefined;
+
+  if (bearer && verifyAdminToken(bearer)) return bearer;
+
+  const cookie = readCookie(req);
+  if (cookie && verifyAdminToken(cookie)) return cookie;
+
+  // Preserve a supplied invalid bearer token so protected endpoints still
+  // reject it rather than accidentally treating the request as anonymous.
+  return bearer || cookie;
 }
 
 export function adminCookie(token: string, maxAge = SESSION_SECONDS): string {
