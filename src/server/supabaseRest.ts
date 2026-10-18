@@ -63,3 +63,37 @@ export async function supabaseAdminRest(
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   return fetch(`${SUPABASE_URL}/rest/v1/${resource}`, { ...init, headers, cache: 'no-store' });
 }
+
+
+/** Upload an object using the server-only service-role key. Call only from an authenticated admin route. */
+export async function supabaseAdminStorageUpload(
+  bucket: string,
+  objectPath: string,
+  body: Uint8Array,
+  contentType: string,
+): Promise<Response> {
+  if (!supabaseAdminReady()) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
+  }
+  const safeBucket = encodeURIComponent(bucket);
+  const safePath = objectPath.split('/').map((part) => encodeURIComponent(part)).join('/');
+  const headers = new Headers({
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    'Content-Type': contentType,
+    'x-upsert': 'false',
+  });
+  return fetch(`${SUPABASE_URL}/storage/v1/object/${safeBucket}/${safePath}`, {
+    method: 'POST',
+    headers,
+    body: body as BodyInit,
+    cache: 'no-store',
+  });
+}
+
+/** Public URL for image objects in a public Storage bucket. */
+export function supabasePublicStorageUrl(bucket: string, objectPath: string): string {
+  const safeBucket = encodeURIComponent(bucket);
+  const safePath = objectPath.split('/').map((part) => encodeURIComponent(part)).join('/');
+  return `${SUPABASE_URL}/storage/v1/object/public/${safeBucket}/${safePath}`;
+}
