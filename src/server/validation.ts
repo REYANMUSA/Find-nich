@@ -1,5 +1,5 @@
-import { DatabaseService } from './db';
-import { AmazonMarketplace, ProductStatus } from '../types';
+import { DatabaseService } from './db.ts';
+import type { AmazonMarketplace, ProductStatus } from '../types/index.ts';
 
 export const ALLOWED_MARKETPLACES: AmazonMarketplace[] = [
   'US', 'UK', 'CA', 'DE', 'FR', 'ES', 'IT', 'JP', 'AU'

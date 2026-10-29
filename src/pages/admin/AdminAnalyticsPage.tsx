@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, MousePointerClick, ShieldCheck, Eye, ExternalLink } from 'lucide-react';
+import { BarChart3, MousePointerClick, ShieldCheck, Eye, ExternalLink, RefreshCw } from 'lucide-react';
 import { adminFetchAnalytics } from '../../lib/api';
+import { useSiteSettings } from '../../lib/settingsStore';
+import { getTheme } from '../../lib/themes';
 
 export const AdminAnalyticsPage: React.FC = () => {
+  const { settings } = useSiteSettings();
+  const currentTheme = getTheme(settings.admin_theme || 'helios');
+
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,8 +24,9 @@ export const AdminAnalyticsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-xs text-zinc-400 animate-pulse">
-        Loading click analytics...
+      <div className="p-12 text-center text-zinc-400 text-xs">
+        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-violet-400" />
+        <span>Loading click analytics...</span>
       </div>
     );
   }
@@ -30,129 +36,116 @@ export const AdminAnalyticsPage: React.FC = () => {
   const recentClicks = data?.recent_clicks || [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-5xl mx-auto text-left">
       
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-zinc-950">Outbound Click Analytics</h1>
-        <p className="text-xs text-zinc-500">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <BarChart3 className="w-6 h-6 text-violet-400" />
+          <span>Outbound Click Analytics</span>
+        </h1>
+        <p className="text-xs text-zinc-400 mt-1">
           Measures reader interest without collecting personal data. Amazon Associates reports remain your official source of truth for purchases.
         </p>
       </div>
 
       {/* Compliance Note */}
-      <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-lg flex items-start gap-3">
-        <ShieldCheck className="w-5 h-5 text-zinc-900 shrink-0 mt-0.5" />
+      <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex items-start gap-3 backdrop-blur-md">
+        <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
         <div className="text-xs space-y-1">
-          <p className="font-semibold text-zinc-900">
+          <p className="font-semibold text-white">
             Privacy-First Click Measurement (Zero PII)
           </p>
-          <p className="text-zinc-600 leading-relaxed">
-            Clicks recorded here represent user taps on “Check price on Amazon” buttons. Find Niche does not collect IP addresses, track cross-site cookies, or inspect shopping baskets. For qualifying purchase commissions, check your official Amazon Associates portal.
+          <p className="text-zinc-400 leading-relaxed">
+            Every click increments an anonymous counter when a reader clicks an Amazon Associates link. No IP addresses, device identifiers, or tracking cookies are recorded.
           </p>
         </div>
       </div>
 
-      {/* Product Interest Ranking */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-5 space-y-4 shadow-xs">
-        <h2 className="text-sm font-bold text-zinc-950 flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-zinc-700" />
-          <span>Product Interest & Click Breakdown</span>
-        </h2>
-
-        {topProducts.length === 0 ? (
-          <p className="text-xs text-zinc-400 py-4 text-center">No clicks recorded yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {topProducts.map((p: any) => {
-              const maxClicks = Math.max(1, topProducts[0]?.clicks || 1);
-              const percentage = Math.min(100, Math.round((p.clicks / maxClicks) * 100));
-              return (
-                <div key={p.id} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 truncate max-w-md">
-                      <span className="font-mono font-bold text-zinc-500">
-                        #{p.number?.toString().padStart(3, '0')}
-                      </span>
-                      <span className="font-semibold text-zinc-900 truncate">{p.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0 font-mono text-[11px] text-zinc-600 tabular-nums">
-                      <span>{p.views || 0} views</span>
-                      <span className="font-bold text-zinc-900">{p.clicks} clicks</span>
-                    </div>
-                  </div>
-                  {/* Subtle bar */}
-                  <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-zinc-900 rounded-full transition-all duration-300"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Sources & Recent Activity Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Two Column Layout: Top Items & Referral Sources */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         
-        {/* Click Origins */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-5 space-y-4 shadow-xs">
-          <h2 className="text-sm font-bold text-zinc-950 flex items-center gap-2">
-            <MousePointerClick className="w-4 h-4 text-zinc-700" />
-            <span>Click Placement Origins</span>
+        {/* Top Clicked Items */}
+        <div className="lg:col-span-2 bg-[#131722]/90 border border-white/10 rounded-2xl p-5 sm:p-6 backdrop-blur-md shadow-xl">
+          <h2 className="text-sm font-bold text-white mb-3">
+            Top Performing Products by Amazon Outbound Clicks
           </h2>
 
-          <div className="divide-y divide-zinc-100 text-xs">
-            <div className="py-2.5 flex items-center justify-between">
-              <span className="text-zinc-600">Product Card Button (Catalog)</span>
-              <span className="font-mono font-bold text-zinc-900 tabular-nums">
-                {sources['catalog_card'] || 0}
-              </span>
-            </div>
-            <div className="py-2.5 flex items-center justify-between">
-              <span className="text-zinc-600">Product Detail Page (Full Review)</span>
-              <span className="font-mono font-bold text-zinc-900 tabular-nums">
-                {sources['product_detail'] || 0}
-              </span>
-            </div>
-            <div className="py-2.5 flex items-center justify-between">
-              <span className="text-zinc-600">Related Products Section</span>
-              <span className="font-mono font-bold text-zinc-900 tabular-nums">
-                {sources['related_products'] || 0}
-              </span>
-            </div>
+          <div className="overflow-x-auto no-scrollbar">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-white/10 text-zinc-400 font-mono">
+                  <th className="py-2.5 px-3">#</th>
+                  <th className="py-2.5 px-3">Product Name</th>
+                  <th className="py-2.5 px-3 text-right">Clicks</th>
+                  <th className="py-2.5 px-3 text-right">Views</th>
+                  <th className="py-2.5 px-3 text-right">CTR</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {topProducts.map((p: any) => {
+                  const ctr = p.views > 0 ? ((p.clicks / p.views) * 100).toFixed(1) : '0.0';
+                  return (
+                    <tr key={p.id} className="hover:bg-white/5 transition-colors">
+                      <td className="py-3 px-3 font-mono font-bold text-zinc-400">
+                        #{p.number?.toString().padStart(3, '0')}
+                      </td>
+                      <td className="py-3 px-3 font-semibold text-white max-w-xs truncate">
+                        {p.name}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-emerald-400 tabular-nums">
+                        {p.clicks}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono text-zinc-400 tabular-nums">
+                        {p.views}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-semibold text-violet-300 tabular-nums">
+                        {ctr}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Real-time Clicks Stream */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-5 space-y-4 shadow-xs">
-          <h2 className="text-sm font-bold text-zinc-950">
-            Recent Click Stream
-          </h2>
-
-          <div className="space-y-2 max-h-56 overflow-y-auto no-scrollbar text-xs">
-            {recentClicks.slice(0, 15).map((c: any) => (
-              <div key={c.id} className="p-2 bg-zinc-50 rounded flex items-center justify-between gap-2">
-                <div className="truncate">
-                  <span className="font-mono font-semibold text-zinc-600 mr-1.5">
-                    #{c.product_number?.toString().padStart(3, '0')}
-                  </span>
-                  <span className="text-zinc-900 font-medium truncate">{c.product_name}</span>
-                </div>
-                <span className="text-[10px] text-zinc-400 shrink-0 font-mono">
-                  {new Date(c.clicked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        {/* Source breakdown */}
+        <div className="bg-[#131722]/90 border border-white/10 rounded-2xl p-5 sm:p-6 backdrop-blur-md shadow-xl space-y-4">
+          <h2 className="text-sm font-bold text-white">Click Locations</h2>
+          <div className="space-y-3">
+            {Object.entries(sources).map(([src, count]: [string, any]) => (
+              <div key={src} className="flex items-center justify-between text-xs py-2 border-b border-white/5">
+                <span className="font-mono text-zinc-300 capitalize">{src.replace(/_/g, ' ')}</span>
+                <span className="font-mono font-bold text-white bg-white/5 px-2.5 py-1 rounded-lg">
+                  {count}
                 </span>
               </div>
             ))}
-            {recentClicks.length === 0 && (
-              <p className="text-xs text-zinc-400 py-6 text-center">No outbound clicks recorded yet.</p>
-            )}
           </div>
         </div>
 
+      </div>
+
+      {/* Recent Clicks Stream */}
+      <div className="bg-[#131722]/90 border border-white/10 rounded-2xl p-5 sm:p-6 backdrop-blur-md shadow-xl">
+        <h2 className="text-sm font-bold text-white mb-3">Recent Anonymous Click Stream</h2>
+        <div className="divide-y divide-white/5 text-xs">
+          {recentClicks.slice(0, 15).map((c: any) => (
+            <div key={c.id} className="py-2.5 flex items-center justify-between text-zinc-300 hover:bg-white/5 px-2 rounded-lg transition-colors">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-zinc-500 text-[11px]">
+                  #{c.product_number?.toString().padStart(3, '0')}
+                </span>
+                <span className="font-semibold text-white">{c.product_name}</span>
+              </div>
+              <div className="flex items-center gap-3 text-zinc-400 text-[11px] font-mono">
+                <span className="bg-white/5 px-2 py-0.5 rounded">{c.source}</span>
+                <span>{new Date(c.clicked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
     </div>

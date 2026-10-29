@@ -12,20 +12,28 @@ import { AffiliateDisclosurePage } from './pages/AffiliateDisclosurePage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
-import { AdminLayout } from './pages/admin/AdminLayout';
+import { AdminLayout, AdminTab } from './pages/admin/AdminLayout';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminProductsPage } from './pages/admin/AdminProductsPage';
 import { AdminProductFormPage } from './pages/admin/AdminProductFormPage';
 import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
+import { AdminBrandingPage } from './pages/admin/AdminBrandingPage';
 import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
 import { isAuthenticated, adminCheckSession } from './lib/api';
+import { useSiteSettings } from './lib/settingsStore';
+import { getTheme } from './lib/themes';
 
 export default function App() {
+  const { settings } = useSiteSettings();
   const [currentPath, setCurrentPath] = useState<string>(() => {
     return window.location.pathname || '/';
   });
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'products' | 'categories' | 'analytics' | 'audit'>('dashboard');
+
+  // Reactive authentication state for instantaneous login
+  const [isAdminAuthed, setIsAdminAuthed] = useState<boolean>(() => isAuthenticated());
+
+  const [adminTab, setAdminTab] = useState<AdminTab>('dashboard');
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
@@ -66,6 +74,8 @@ export default function App() {
       setAdminTab('products');
     } else if (currentPath === '/admin/categories') {
       setAdminTab('categories');
+    } else if (currentPath === '/admin/branding') {
+      setAdminTab('branding');
     } else if (currentPath === '/admin/analytics') {
       setAdminTab('analytics');
     } else if (currentPath === '/admin/audit') {
@@ -74,25 +84,23 @@ export default function App() {
       setAdminTab('dashboard');
     }
 
+    // Verify background session validity quietly
     if (currentPath.startsWith('/admin') && currentPath !== '/admin/login') {
       adminCheckSession().then((isValid: boolean) => {
-        if (!isValid && currentPath.startsWith('/admin')) {
-          setCurrentPath(currentPath);
-        }
+        setIsAdminAuthed(isValid);
       });
     }
   }, [currentPath]);
 
-  const authed = isAuthenticated();
-
   // Helper for admin navigation
-  const handleSelectAdminTab = (tab: 'dashboard' | 'products' | 'categories' | 'analytics' | 'audit') => {
+  const handleSelectAdminTab = (tab: AdminTab) => {
     setAdminTab(tab);
     setIsAddingProduct(false);
     setEditingProductId(null);
     if (tab === 'dashboard') navigate('/admin');
     else if (tab === 'products') navigate('/admin/products');
     else if (tab === 'categories') navigate('/admin/categories');
+    else if (tab === 'branding') navigate('/admin/branding');
     else if (tab === 'analytics') navigate('/admin/analytics');
     else if (tab === 'audit') navigate('/admin/audit');
   };
@@ -116,17 +124,30 @@ export default function App() {
     navigate('/admin/products');
   };
 
+  const handleLoginSuccess = () => {
+    setIsAdminAuthed(true);
+    navigate('/admin');
+  };
+
+  const handleLogout = () => {
+    setIsAdminAuthed(false);
+    navigate('/');
+  };
+
+  // Active theme calculation
+  const publicTheme = getTheme(settings.apply_to_public ? settings.public_theme : 'titanium');
+
   // Render Router
   const renderContent = () => {
     // 1. Admin login route
     if (currentPath === '/admin/login') {
-      if (authed) {
+      if (isAdminAuthed) {
         navigate('/admin', true);
         return null;
       }
       return (
         <AdminLoginPage
-          onLoginSuccess={() => navigate('/admin')}
+          onLoginSuccess={handleLoginSuccess}
           onBackToSite={() => navigate('/')}
         />
       );
@@ -134,10 +155,10 @@ export default function App() {
 
     // 2. Protected admin routes
     if (currentPath.startsWith('/admin')) {
-      if (!authed) {
+      if (!isAdminAuthed) {
         return (
           <AdminLoginPage
-            onLoginSuccess={() => navigate(currentPath)}
+            onLoginSuccess={handleLoginSuccess}
             onBackToSite={() => navigate('/')}
           />
         );
@@ -150,7 +171,7 @@ export default function App() {
           onSelectTab={handleSelectAdminTab}
           onNavigatePublic={(p) => navigate(p || '/')}
           onAddNewProduct={handleStartAddProduct}
-          onLogout={() => navigate('/')}
+          onLogout={handleLogout}
         >
           {isAddingProduct || editingProductId ? (
             <AdminProductFormPage
@@ -170,6 +191,8 @@ export default function App() {
             />
           ) : adminTab === 'categories' ? (
             <AdminCategoriesPage />
+          ) : adminTab === 'branding' ? (
+            <AdminBrandingPage />
           ) : adminTab === 'analytics' ? (
             <AdminAnalyticsPage />
           ) : adminTab === 'audit' ? (
@@ -259,16 +282,31 @@ export default function App() {
     );
   };
 
-  const isAdminView = currentPath.startsWith('/admin') && authed;
+  const isAdminView = currentPath.startsWith('/admin');
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-zinc-900 selection:bg-zinc-900 selection:text-white">
+    <div
+      className={`min-h-screen flex flex-col ${
+        isAdminView
+          ? 'bg-[#0B0D14]'
+          : settings.apply_to_public
+          ? publicTheme.classes.bgApp
+          : 'bg-white text-zinc-900'
+      } selection:bg-violet-600 selection:text-white transition-colors duration-300`}
+    >
+      {/* Announcement Banner if configured */}
+      {!isAdminView && settings.announcement && (
+        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-semibold py-2 px-4 text-center">
+          {settings.announcement}
+        </div>
+      )}
+
       {/* Show public navbar on non-admin views with 5-tap secret trigger */}
       {!isAdminView && (
         <Navbar
           currentPath={currentPath}
           onNavigate={(path) => navigate(path)}
-          onSecretAdminTrigger={() => navigate('/admin')}
+          onSecretAdminTrigger={() => navigate('/admin/login')}
         />
       )}
 
@@ -282,7 +320,7 @@ export default function App() {
         <Footer onNavigate={(path) => navigate(path)} />
       )}
 
-      {/* Show mobile bottom navigation bar on public pages (excluding product detail which has its own sticky action) */}
+      {/* Show mobile bottom navigation bar on public pages */}
       {!isAdminView && !currentPath.startsWith('/product/') && (
         <BottomTabBar
           currentPath={currentPath}

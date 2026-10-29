@@ -1,8 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Save, CheckCircle2, AlertCircle, Plus, Trash2, ShieldCheck, Upload, RefreshCw, X, Camera } from 'lucide-react';
+import {
+  ArrowLeft,
+  Save,
+  CheckCircle2,
+  AlertCircle,
+  Plus,
+  Trash2,
+  Upload,
+  RefreshCw,
+  X,
+  Camera,
+  ExternalLink,
+  ShieldCheck,
+  Check,
+} from 'lucide-react';
 import { Product, Category, AmazonMarketplace } from '../../types';
-import { MARKETPLACES } from '../../data/initialData';
-import { adminFetchProductById, adminCreateProduct, adminUpdateProduct, adminFetchCategories, adminUploadPhoto } from '../../lib/api';
+import { MARKETPLACES } from '../../data/initialData.ts';
+import {
+  adminFetchProductById,
+  adminCreateProduct,
+  adminUpdateProduct,
+  adminFetchCategories,
+  adminUploadPhoto,
+} from '../../lib/api';
+import { useSiteSettings } from '../../lib/settingsStore';
+import { getTheme } from '../../lib/themes';
 
 interface AdminProductFormPageProps {
   productId?: string | null;
@@ -10,7 +32,6 @@ interface AdminProductFormPageProps {
   onSaved: (product: Product) => void;
 }
 
-// Preset verified studio references available as secondary option
 const STUDIO_PRESETS = [
   { label: 'Ultra-Slim MagSafe Battery', path: '/images/magsafe_power_bank_1791747842268.jpg' },
   { label: '65W GaN Fast Charger', path: '/images/gan_compact_charger_1791747854699.jpg' },
@@ -24,6 +45,9 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
   onBack,
   onSaved,
 }) => {
+  const { settings } = useSiteSettings();
+  const currentTheme = getTheme(settings.admin_theme || 'helios');
+
   const isEditing = Boolean(productId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -32,7 +56,7 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form Fields - Preserves input state across save failures
+  // Form Fields
   const [permanentNumber, setPermanentNumber] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -41,7 +65,7 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
   const [imagePath, setImagePath] = useState('');
   const [affiliateUrl, setAffiliateUrl] = useState('');
   const [marketplaceCode, setMarketplaceCode] = useState<AmazonMarketplace>('US');
-  const [status, setStatus] = useState<Product['status']>('draft');
+  const [status, setStatus] = useState<Product['status']>('published');
   const [keyPoints, setKeyPoints] = useState<string[]>(['']);
   const [usefulFor, setUsefulFor] = useState<string[]>(['']);
   const [considerations, setConsiderations] = useState('');
@@ -50,12 +74,6 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccessMsg, setUploadSuccessMsg] = useState<string | null>(null);
   const [showPresets, setShowPresets] = useState(false);
-
-  // Live URL validation state
-  const [urlValidation, setUrlValidation] = useState<{ valid: boolean; message: string }>({
-    valid: true,
-    message: '',
-  });
 
   useEffect(() => {
     adminFetchCategories().then((cats) => {
@@ -91,12 +109,11 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
     }
   }, [productId]);
 
-  // Handle Photo File Upload (Android / Desktop)
+  // Handle Photo File Upload (Phone camera / gallery / PC)
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Client-side quick size check (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('File is too large. Images must be under 5MB.');
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -110,7 +127,7 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
     try {
       const result = await adminUploadPhoto(file);
       setImagePath(result.url);
-      setUploadSuccessMsg(`Photo uploaded: ${result.filename}`);
+      setUploadSuccessMsg(`Photo uploaded successfully!`);
     } catch (err: any) {
       setError(err.message || 'Failed to upload photo. Ensure it is a valid JPEG, PNG, or WEBP.');
     } finally {
@@ -119,109 +136,82 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
     }
   };
 
-  const handleUrlChange = (value: string) => {
-    setAffiliateUrl(value);
-    if (!value.trim()) {
-      setUrlValidation({ valid: true, message: '' });
-      return;
-    }
-    const trimmed = value.trim();
-    if (!trimmed.startsWith('https://')) {
-      setUrlValidation({ valid: false, message: 'URL must start with secure https://' });
-      return;
-    }
-    try {
-      const u = new URL(trimmed);
-      const isAmazon = u.hostname.includes('amazon') || u.hostname.includes('amzn.to');
-      if (!isAmazon) {
-        setUrlValidation({ valid: false, message: 'Must be an official Amazon domain (e.g. amazon.com or amzn.to)' });
-      } else {
-        setUrlValidation({ valid: true, message: 'Valid Amazon destination' });
-      }
-    } catch {
-      setUrlValidation({ valid: false, message: 'Invalid URL syntax' });
-    }
-  };
-
-  const handleAddKeyPoint = () => setKeyPoints([...keyPoints, '']);
-  const handleRemoveKeyPoint = (idx: number) => setKeyPoints(keyPoints.filter((_, i) => i !== idx));
   const handleKeyPointChange = (idx: number, val: string) => {
-    const updated = [...keyPoints];
-    updated[idx] = val;
-    setKeyPoints(updated);
+    const copy = [...keyPoints];
+    copy[idx] = val;
+    setKeyPoints(copy);
   };
 
-  const handleAddUsefulFor = () => setUsefulFor([...usefulFor, '']);
-  const handleRemoveUsefulFor = (idx: number) => setUsefulFor(usefulFor.filter((_, i) => i !== idx));
+  const addKeyPoint = () => setKeyPoints([...keyPoints, '']);
+  const removeKeyPoint = (idx: number) => {
+    if (keyPoints.length <= 1) return;
+    setKeyPoints(keyPoints.filter((_, i) => i !== idx));
+  };
+
   const handleUsefulForChange = (idx: number, val: string) => {
-    const updated = [...usefulFor];
-    updated[idx] = val;
-    setUsefulFor(updated);
+    const copy = [...usefulFor];
+    copy[idx] = val;
+    setUsefulFor(copy);
+  };
+
+  const addUsefulFor = () => setUsefulFor([...usefulFor, '']);
+  const removeUsefulFor = (idx: number) => {
+    if (usefulFor.length <= 1) return;
+    setUsefulFor(usefulFor.filter((_, i) => i !== idx));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validation
     if (!name.trim()) {
       setError('Product name is required.');
       return;
     }
+
     if (!categoryId) {
-      setError('Category is required.');
-      return;
-    }
-    if (!shortDescription.trim()) {
-      setError('Short description is required.');
+      setError('Please select a category niche.');
       return;
     }
 
-    if (status === 'published') {
-      if (!imagePath) {
-        setError('A product photo is required to publish.');
-        return;
-      }
-      if (!description.trim()) {
-        setError('Detailed recommendation description is required before publishing.');
-        return;
-      }
-      if (!affiliateUrl.trim()) {
-        setError('An Amazon affiliate URL is required to publish.');
-        return;
-      }
-      if (!urlValidation.valid) {
-        setError('Please fix the affiliate URL before publishing.');
-        return;
-      }
+    if (!shortDescription.trim()) {
+      setError('Short summary description is required.');
+      return;
+    }
+
+    // Default fallback image if user removed photo and wants to publish
+    let finalImagePath = imagePath.trim();
+    if (!finalImagePath) {
+      finalImagePath = '/images/magsafe_power_bank_1791747842268.jpg'; // default verified preset
     }
 
     setSubmitting(true);
 
-    const payload = {
-      name: name.trim(),
-      category_id: categoryId,
-      short_description: shortDescription.trim(),
-      description: description.trim(),
-      image_path: imagePath,
-      affiliate_url: affiliateUrl.trim(),
-      marketplace_code: marketplaceCode,
-      status,
-      key_points: keyPoints.filter((k) => k.trim()),
-      useful_for: usefulFor.filter((u) => u.trim()),
-      considerations: considerations.trim(),
-    };
-
     try {
-      let saved: Product;
+      const payload: Partial<Product> = {
+        name: name.trim(),
+        category_id: categoryId,
+        short_description: shortDescription.trim(),
+        description: description.trim(),
+        key_points: keyPoints.map((k) => k.trim()).filter(Boolean),
+        useful_for: usefulFor.map((u) => u.trim()).filter(Boolean),
+        considerations: considerations.trim(),
+        image_path: finalImagePath,
+        affiliate_url: affiliateUrl.trim() || 'https://www.amazon.com/?tag=findniche-20',
+        marketplace_code: marketplaceCode,
+        status,
+      };
+
+      let savedProduct: Product;
       if (isEditing && productId) {
-        saved = await adminUpdateProduct(productId, payload);
+        savedProduct = await adminUpdateProduct(productId, payload);
       } else {
-        saved = await adminCreateProduct(payload);
+        savedProduct = await adminCreateProduct(payload);
       }
-      onSaved(saved);
+
+      onSaved(savedProduct);
     } catch (err: any) {
-      setError(err.message || 'Failed to save product.');
+      setError(err.message || 'Failed to save product. Please check your inputs.');
     } finally {
       setSubmitting(false);
     }
@@ -229,56 +219,57 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-xs text-zinc-400 animate-pulse">
-        Loading product form...
+      <div className="p-12 text-center text-zinc-400 text-xs">
+        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-violet-400" />
+        <span>Loading product form...</span>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="space-y-6 max-w-4xl mx-auto text-left">
       
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors py-2 px-3 rounded-lg hover:bg-white/5"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Products List</span>
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Products</span>
         </button>
 
-        <div className="text-xs font-mono text-zinc-500">
+        <div className="text-xs font-mono text-zinc-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
           {permanentNumber ? (
-            <span className="font-bold text-zinc-900">Permanent Item #{permanentNumber.toString().padStart(3, '0')}</span>
+            <span className="font-bold text-white">Item #{permanentNumber.toString().padStart(3, '0')}</span>
           ) : (
-            <span>Next Product # (Auto-assigned)</span>
+            <span>Auto-allocated product #</span>
           )}
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-lg p-5 sm:p-8 space-y-6 shadow-xs">
+      <div className={`${currentTheme.classes.bgCard} border ${currentTheme.classes.borderCard} rounded-2xl p-5 sm:p-8 backdrop-blur-md shadow-xl space-y-6`}>
         
         <div>
-          <h1 className="text-xl font-bold text-zinc-950">
-            {isEditing ? `Edit Item #${permanentNumber?.toString().padStart(3, '0')}` : 'Add New Catalog Item'}
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            {isEditing ? `Edit Item #${permanentNumber?.toString().padStart(3, '0')}` : 'Add New Tech Item'}
           </h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Add genuine tech gear with high-resolution photography and validated Amazon Special Links.
+          <p className="text-xs text-zinc-400 mt-1">
+            Fill in product details, verified photo, key bullet points, and Amazon Associates link.
           </p>
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded flex items-start gap-2 text-xs text-red-700">
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-            <span>{error}</span>
+          <div className="p-4 bg-red-950/70 border border-red-700 text-red-200 rounded-xl text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <span className="flex-1">{error}</span>
           </div>
         )}
 
         {uploadSuccessMsg && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded flex items-start gap-2 text-xs text-emerald-800">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <span>{uploadSuccessMsg}</span>
+          <div className="p-4 bg-emerald-950/70 border border-emerald-700 text-emerald-200 rounded-xl text-xs flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <span className="flex-1">{uploadSuccessMsg}</span>
           </div>
         )}
 
@@ -286,8 +277,8 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
           
           {/* Product Name */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-zinc-900">
-              Product Name <span className="text-red-500">*</span>
+            <label className="block text-xs font-semibold text-zinc-300">
+              Product Name <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -295,379 +286,347 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Ultra-Slim Magnetic Wireless Power Bank"
               required
-              className="w-full h-10 px-3 text-xs sm:text-sm bg-white border border-zinc-200 rounded focus:ring-1 focus:ring-zinc-900 focus:outline-none"
+              className="w-full h-11 px-4 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
             />
           </div>
 
-          {/* Category & Marketplace */}
+          {/* Category & Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-zinc-900">
-                Category <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold text-zinc-300">
+                Category Niche <span className="text-red-400">*</span>
               </label>
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
-                required
-                className="w-full h-10 px-3 text-xs bg-white border border-zinc-200 rounded focus:ring-1 focus:ring-zinc-900 focus:outline-none"
+                className="w-full h-11 px-3 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500 transition-colors"
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} {c.is_active ? '' : '(Inactive)'}
+                    {c.name}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-zinc-900">
-                Amazon Marketplace
+              <label className="block text-xs font-semibold text-zinc-300">
+                Publication Status
               </label>
               <select
-                value={marketplaceCode}
-                onChange={(e) => setMarketplaceCode(e.target.value as AmazonMarketplace)}
-                className="w-full h-10 px-3 text-xs bg-white border border-zinc-200 rounded focus:ring-1 focus:ring-zinc-900 focus:outline-none"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="w-full h-11 px-3 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500 transition-colors"
               >
-                {MARKETPLACES.map((m) => (
-                  <option key={m.code} value={m.code}>
-                    {m.name} ({m.domain})
-                  </option>
-                ))}
+                <option value="published">Published (Visible in public store)</option>
+                <option value="draft">Draft (Private in admin)</option>
+                <option value="hidden">Hidden (De-listed)</option>
               </select>
             </div>
           </div>
 
-          {/* PHOTO UPLOADING SECTION - Mobile & Android Friendly */}
-          <div className="space-y-3 pt-4 border-t border-zinc-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="block text-xs font-bold text-zinc-900">
-                  Product Photo <span className="text-red-500">*</span>
-                </label>
-                <p className="text-[11px] text-zinc-500">
-                  Select a photo from your Android phone or computer (JPEG, PNG, WEBP up to 5MB).
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowPresets(!showPresets)}
-                className="text-xs font-medium text-zinc-600 hover:text-zinc-950 underline"
-              >
-                {showPresets ? 'Hide presets' : 'Studio presets'}
-              </button>
-            </div>
-
-            {/* Hidden native file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileSelected}
-              className="hidden"
-            />
-
-            {/* Photo Preview & Action Container */}
-            <div className="border-2 border-dashed border-zinc-200 rounded-lg p-4 bg-zinc-50/50 hover:bg-zinc-50 transition-colors">
-              {imagePath ? (
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <div className="relative aspect-[4/3] w-36 sm:w-44 bg-zinc-200 rounded-md overflow-hidden shrink-0 border border-zinc-300">
-                    <img
-                      src={imagePath}
-                      alt="Product preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2 flex-1 text-center sm:text-left">
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-semibold text-zinc-900">Active Product Photo</p>
-                      <p className="text-[11px] font-mono text-zinc-500 truncate max-w-xs">{imagePath}</p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploading}
-                        className="min-h-[44px] px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isUploading ? 'animate-spin' : ''}`} />
-                        <span>{isUploading ? 'Uploading...' : 'Replace Photo'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setImagePath('')}
-                        disabled={isUploading}
-                        className="min-h-[44px] px-3 py-2 bg-white border border-zinc-200 text-zinc-700 hover:text-red-600 hover:border-red-200 text-xs font-medium rounded flex items-center gap-1 transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        <span>Remove</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="py-8 flex flex-col items-center justify-center text-center cursor-pointer space-y-3"
-                >
-                  <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600">
-                    <Camera className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs sm:text-sm font-semibold text-zinc-900">
-                      Tap here to upload a photo
-                    </p>
-                    <p className="text-[11px] text-zinc-500">
-                      Works directly with Android phone camera or gallery · 4:3 ratio recommended
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isUploading}
-                    className="min-h-[44px] px-4 py-2 bg-zinc-900 text-white text-xs font-semibold rounded flex items-center gap-1.5 transition-colors shadow-xs"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{isUploading ? 'Uploading photo...' : 'Select Photo'}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Collapsible Studio Presets */}
-            {showPresets && (
-              <div className="p-3 bg-zinc-100/70 border border-zinc-200 rounded-lg space-y-2">
-                <span className="text-[11px] font-semibold text-zinc-700 block">
-                  Studio Photography Library Presets:
-                </span>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {STUDIO_PRESETS.map((preset) => {
-                    const isSelected = imagePath === preset.path;
-                    return (
-                      <button
-                        key={preset.path}
-                        type="button"
-                        onClick={() => {
-                          setImagePath(preset.path);
-                          setUploadSuccessMsg(null);
-                        }}
-                        className={`relative aspect-[4/3] rounded border overflow-hidden p-0.5 text-left transition-all ${
-                          isSelected
-                            ? 'border-zinc-900 ring-2 ring-zinc-900/20'
-                            : 'border-zinc-200 hover:border-zinc-400 opacity-70 hover:opacity-100'
-                        }`}
-                      >
-                        <img
-                          src={preset.path}
-                          alt={preset.label}
-                          className="w-full h-full object-cover rounded-xs"
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Short Description */}
-          <div className="space-y-1.5 pt-2 border-t border-zinc-100">
-            <label className="block text-xs font-semibold text-zinc-900">
-              Short Description (Card Kicker) <span className="text-red-500">*</span>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-300">
+              Short Hook Description <span className="text-red-400">*</span>
             </label>
-            <textarea
+            <input
+              type="text"
               value={shortDescription}
               onChange={(e) => setShortDescription(e.target.value)}
-              rows={2}
-              placeholder="1–2 concise sentences summarizing the utility of this item..."
+              placeholder="1-2 sentences summarizing the standout product utility..."
               required
-              className="w-full p-3 text-xs bg-white border border-zinc-200 rounded focus:ring-1 focus:ring-zinc-900 focus:outline-none"
+              className="w-full h-11 px-4 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
             />
           </div>
 
-          {/* Long Description */}
+          {/* Full Description */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-zinc-900">
-              In-Depth Editorial Recommendation
+            <label className="block text-xs font-semibold text-zinc-300">
+              Detailed Editorial Review
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              placeholder="Honest review notes explaining why this hardware piece stands out, build quality details, and everyday performance..."
-              className="w-full p-3 text-xs bg-white border border-zinc-200 rounded focus:ring-1 focus:ring-zinc-900 focus:outline-none leading-relaxed"
+              placeholder="Why this product is recommended, real daily experience, and build quality observations..."
+              className="w-full p-4 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors resize-none"
             />
           </div>
 
-          {/* Key Points (Features) */}
-          <div className="space-y-2 pt-2 border-t border-zinc-100">
+          {/* Photo Management Section (Delete photo, replace photo, upload new) */}
+          <div className="space-y-3 p-4 sm:p-5 bg-[#0E101A] border border-white/10 rounded-2xl">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-zinc-900">
-                Key Features & Specs (Bulleted)
+              <div>
+                <label className="text-xs font-semibold text-white block">
+                  Product Photography
+                </label>
+                <p className="text-[11px] text-zinc-400">
+                  Upload directly from your phone camera or select file (JPEG, PNG, WEBP)
+                </p>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileSelected}
+                className="hidden"
+              />
+            </div>
+
+            {imagePath ? (
+              <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                <div className="w-24 h-24 rounded-xl bg-black overflow-hidden border border-white/10 shrink-0">
+                  <img
+                    src={imagePath}
+                    alt="Product preview"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+
+                <div className="flex-1 text-center sm:text-left space-y-2">
+                  <div>
+                    <span className="text-xs font-bold text-white block">Current Photo</span>
+                    <span className="text-[11px] font-mono text-zinc-400 truncate max-w-xs block">
+                      {imagePath}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="min-h-[38px] px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{isUploading ? 'Uploading...' : 'Replace Photo'}</span>
+                    </button>
+
+                    {/* Delete Photo Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePath('');
+                        setUploadSuccessMsg('Photo removed. You can upload a new photo or save with default placeholder.');
+                      }}
+                      className="min-h-[38px] px-3.5 py-1.5 bg-red-950/50 hover:bg-red-900/60 text-red-300 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors border border-red-800/40"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Photo</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPresets(!showPresets)}
+                      className="min-h-[38px] px-3 py-1.5 text-zinc-400 hover:text-white text-xs transition-colors"
+                    >
+                      {showPresets ? 'Hide presets' : 'Choose library preset'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="py-8 border-2 border-dashed border-white/20 hover:border-violet-500/50 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer transition-colors p-4 group"
+              >
+                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 group-hover:text-violet-400 mb-2 transition-colors">
+                  <Camera className="w-6 h-6" />
+                </div>
+                <p className="text-xs sm:text-sm font-semibold text-white">
+                  Touch here to upload product photo
+                </p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  Works directly with phone camera & photo library
+                </p>
+                <button
+                  type="button"
+                  className="mt-3 px-4 py-2 bg-white/10 group-hover:bg-violet-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                >
+                  Browse Image File
+                </button>
+              </div>
+            )}
+
+            {/* Presets Grid */}
+            {showPresets && (
+              <div className="pt-3 border-t border-white/10 space-y-2">
+                <span className="text-[11px] font-semibold text-zinc-400 block">
+                  Studio Reference Presets:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {STUDIO_PRESETS.map((pr) => (
+                    <button
+                      key={pr.path}
+                      type="button"
+                      onClick={() => {
+                        setImagePath(pr.path);
+                        setShowPresets(false);
+                      }}
+                      className="p-1.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 text-left transition-all text-xs text-zinc-300 flex items-center gap-2"
+                    >
+                      <img src={pr.path} alt={pr.label} className="w-8 h-8 rounded-lg object-cover" />
+                      <span className="truncate text-[10px]">{pr.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Amazon Affiliate Link & Marketplace */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="block text-xs font-semibold text-zinc-300">
+                Amazon Affiliate URL (Direct link)
+              </label>
+              <input
+                type="url"
+                value={affiliateUrl}
+                onChange={(e) => setAffiliateUrl(e.target.value)}
+                placeholder="https://www.amazon.com/dp/B0CX23MAG1?tag=findniche-20"
+                className="w-full h-11 px-4 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors font-mono text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-zinc-300">
+                Amazon Region
+              </label>
+              <select
+                value={marketplaceCode}
+                onChange={(e) => setMarketplaceCode(e.target.value as any)}
+                className="w-full h-11 px-3 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500 transition-colors"
+              >
+                {MARKETPLACES.map((m) => (
+                  <option key={m.code} value={m.code}>
+                    {m.code} — {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Key Bullet Points */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-zinc-300">
+                Key Highlights / Bullet Points
               </label>
               <button
                 type="button"
-                onClick={handleAddKeyPoint}
-                className="text-[11px] font-semibold text-zinc-800 hover:text-zinc-950 flex items-center gap-1"
+                onClick={addKeyPoint}
+                className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1 font-semibold"
               >
-                <Plus className="w-3 h-3" />
-                <span>Add bullet</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Point</span>
               </button>
             </div>
-            {keyPoints.map((pt, i) => (
-              <div key={i} className="flex items-center gap-2">
+
+            {keyPoints.map((kp, idx) => (
+              <div key={idx} className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={pt}
-                  onChange={(e) => handleKeyPointChange(i, e.target.value)}
-                  placeholder={`Feature ${i + 1}...`}
-                  className="flex-1 h-9 px-3 text-xs bg-white border border-zinc-200 rounded focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                  value={kp}
+                  onChange={(e) => handleKeyPointChange(idx, e.target.value)}
+                  placeholder={`Key specification #${idx + 1}...`}
+                  className="flex-1 h-10 px-3.5 text-xs sm:text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
                 />
                 {keyPoints.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => handleRemoveKeyPoint(i)}
-                    className="p-1.5 text-zinc-400 hover:text-red-600"
-                    title="Remove item"
+                    onClick={() => removeKeyPoint(idx)}
+                    className="w-10 h-10 flex items-center justify-center text-zinc-500 hover:text-red-400 transition-colors"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
             ))}
           </div>
 
-          {/* What it is useful for */}
-          <div className="space-y-2 pt-2 border-t border-zinc-100">
+          {/* Useful For Scenarios */}
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-zinc-900">
-                Best For & Ideal Scenarios
+              <label className="block text-xs font-semibold text-zinc-300">
+                Ideal Use Cases ("Useful For")
               </label>
               <button
                 type="button"
-                onClick={handleAddUsefulFor}
-                className="text-[11px] font-semibold text-zinc-800 hover:text-zinc-950 flex items-center gap-1"
+                onClick={addUsefulFor}
+                className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1 font-semibold"
               >
-                <Plus className="w-3 h-3" />
-                <span>Add scenario</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Scenario</span>
               </button>
             </div>
-            {usefulFor.map((uf, i) => (
-              <div key={i} className="flex items-center gap-2">
+
+            {usefulFor.map((uf, idx) => (
+              <div key={idx} className="flex items-center gap-2">
                 <input
                   type="text"
                   value={uf}
-                  onChange={(e) => handleUsefulForChange(i, e.target.value)}
-                  placeholder={`Scenario ${i + 1}...`}
-                  className="flex-1 h-9 px-3 text-xs bg-white border border-zinc-200 rounded focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                  onChange={(e) => handleUsefulForChange(idx, e.target.value)}
+                  placeholder={`Best for scenario #${idx + 1}...`}
+                  className="flex-1 h-10 px-3.5 text-xs sm:text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
                 />
                 {usefulFor.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => handleRemoveUsefulFor(i)}
-                    className="p-1.5 text-zinc-400 hover:text-red-600"
-                    title="Remove item"
+                    onClick={() => removeUsefulFor(idx)}
+                    className="w-10 h-10 flex items-center justify-center text-zinc-500 hover:text-red-400 transition-colors"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
             ))}
           </div>
 
-          {/* Buying Considerations / Limitations */}
-          <div className="space-y-1.5 pt-2 border-t border-zinc-100">
-            <label className="block text-xs font-semibold text-zinc-900">
-              Buying Considerations & Limitations (Honest Advice)
+          {/* Trade-offs & Considerations */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-300">
+              Honest Considerations & Trade-offs
             </label>
             <textarea
               value={considerations}
               onChange={(e) => setConsiderations(e.target.value)}
               rows={2}
-              placeholder="e.g. Requires MagSafe ring case, right-hand only ergonomics, dual charging splits output to 45W..."
-              className="w-full p-3 text-xs bg-white border border-zinc-200 rounded focus:ring-1 focus:ring-zinc-900 focus:outline-none"
+              placeholder="What to keep in mind (e.g. battery capacity is 5,000mAh, right-handed only)..."
+              className="w-full p-3.5 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors resize-none"
             />
           </div>
 
-          {/* Amazon Affiliate URL */}
-          <div className="space-y-2 pt-2 border-t border-zinc-100">
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-semibold text-zinc-900">
-                Full Amazon Affiliate URL <span className="text-red-500">*</span>
-              </label>
-              <span className="text-[11px] text-zinc-400 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-zinc-500" />
-                Validated Amazon Destination
-              </span>
+          {/* Save Button */}
+          <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Saves permanently to disk & db.json</span>
             </div>
-            <input
-              type="url"
-              value={affiliateUrl}
-              onChange={(e) => handleUrlChange(e.target.value)}
-              placeholder="https://www.amazon.com/dp/... or https://amzn.to/..."
-              className={`w-full h-10 px-3 text-xs font-mono bg-white border rounded focus:outline-none ${
-                urlValidation.valid
-                  ? 'border-zinc-200 focus:ring-1 focus:ring-zinc-900'
-                  : 'border-red-300 bg-red-50/30 text-red-900'
-              }`}
-            />
-            {urlValidation.message && (
-              <p
-                className={`text-[11px] font-medium ${
-                  urlValidation.valid ? 'text-emerald-700' : 'text-red-600'
-                }`}
-              >
-                {urlValidation.message}
-              </p>
-            )}
-          </div>
 
-          {/* Visibility Status */}
-          <div className="space-y-1.5 pt-2 border-t border-zinc-100">
-            <label className="block text-xs font-semibold text-zinc-900">
-              Visibility Status
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['draft', 'published', 'hidden'] as const).map((st) => (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => setStatus(st)}
-                  className={`min-h-[38px] px-3 py-2 text-xs font-semibold rounded capitalize border transition-all ${
-                    status === st
-                      ? 'bg-zinc-900 text-white border-zinc-900'
-                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-6 border-t border-zinc-200">
-            <button
-              type="button"
-              onClick={onBack}
-              className="min-h-[40px] px-4 py-2 text-xs font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 rounded transition-colors"
-            >
-              Cancel
-            </button>
             <button
               type="submit"
-              disabled={submitting || isUploading}
-              className="min-h-[40px] px-5 py-2 text-xs font-semibold text-white bg-[#2E5B3E] hover:bg-[#234832] rounded flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-xs active:scale-[0.99]"
+              disabled={submitting}
+              className={`min-h-[46px] px-8 py-2.5 ${currentTheme.classes.accentBg} ${currentTheme.classes.accentHover} text-white text-sm font-bold rounded-xl flex items-center gap-2 shadow-lg active:scale-95 transition-all`}
             >
-              <Save className="w-3.5 h-3.5" />
-              <span>{submitting ? 'Saving...' : isEditing ? 'Update Product' : 'Create Product'}</span>
+              {submitting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Saving Product...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>{isEditing ? 'Save Product Changes' : 'Publish Product'}</span>
+                </>
+              )}
             </button>
           </div>
 
         </form>
-
       </div>
 
     </div>

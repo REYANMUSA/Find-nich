@@ -1,4 +1,4 @@
-import { Product, Category, ProductClick, AuditLog } from '../types';
+import type { Product, Category, ProductClick, AuditLog, SiteSettings } from '../types/index.ts';
 
 // Storage key for client-side cached categories for offline speed
 const STORAGE_CATEGORIES_KEY = 'fn_cached_categories';
@@ -6,21 +6,35 @@ const STORAGE_SESSION_FLAG = 'fn_is_admin_authenticated';
 const STORAGE_BEARER_FALLBACK = 'fn_admin_bearer_token';
 
 export function getAdminToken(): string | null {
-  return sessionStorage.getItem(STORAGE_BEARER_FALLBACK);
+  return localStorage.getItem(STORAGE_BEARER_FALLBACK) || sessionStorage.getItem(STORAGE_BEARER_FALLBACK);
 }
 
 export function setAdminToken(token: string): void {
-  sessionStorage.setItem(STORAGE_BEARER_FALLBACK, token);
-  localStorage.setItem(STORAGE_SESSION_FLAG, 'true');
+  try {
+    localStorage.setItem(STORAGE_BEARER_FALLBACK, token);
+    localStorage.setItem(STORAGE_SESSION_FLAG, 'true');
+    sessionStorage.setItem(STORAGE_BEARER_FALLBACK, token);
+  } catch {
+    // fallback
+  }
 }
 
 export function clearAdminToken(): void {
-  sessionStorage.removeItem(STORAGE_BEARER_FALLBACK);
-  localStorage.removeItem(STORAGE_SESSION_FLAG);
+  try {
+    localStorage.removeItem(STORAGE_BEARER_FALLBACK);
+    localStorage.removeItem(STORAGE_SESSION_FLAG);
+    sessionStorage.removeItem(STORAGE_BEARER_FALLBACK);
+  } catch {
+    // fallback
+  }
 }
 
 export function isAuthenticated(): boolean {
-  return localStorage.getItem(STORAGE_SESSION_FLAG) === 'true';
+  try {
+    return localStorage.getItem(STORAGE_SESSION_FLAG) === 'true' || Boolean(getAdminToken());
+  } catch {
+    return false;
+  }
 }
 
 function getLocalCategories(): Category[] {
@@ -382,4 +396,44 @@ export async function adminFetchAuditLogs(): Promise<AuditLog[]> {
     return data.logs;
   }
   throw new Error('Failed to load audit logs.');
+}
+
+// Site Settings & Branding
+export async function fetchSiteSettings(): Promise<SiteSettings> {
+  const res = await fetch('/api/settings');
+  if (res.ok) {
+    const data = await res.json();
+    return data.settings;
+  }
+  throw new Error('Failed to load site settings.');
+}
+
+export async function adminUpdateSiteSettings(payload: Partial<SiteSettings>): Promise<SiteSettings> {
+  const res = await fetch('/api/admin/settings', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (res.ok && data.settings) {
+    return data.settings;
+  }
+  throw new Error(data.error?.message || 'Failed to update site settings.');
+}
+
+// Permanent hard delete
+export async function adminHardDeleteProduct(id: string): Promise<void> {
+  const res = await fetch(`/api/admin/products/${encodeURIComponent(id)}/permanent`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error?.message || 'Failed to permanently delete product.');
+  }
 }

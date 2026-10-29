@@ -3,8 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { Product, Category, ProductClick, AuditLog, AmazonMarketplace } from '../types';
-import { INITIAL_CATEGORIES, INITIAL_PRODUCTS } from '../data/initialData';
+import type { Product, Category, ProductClick, AuditLog, AmazonMarketplace, SiteSettings, ThemeId } from '../types/index.ts';
+import { INITIAL_CATEGORIES, INITIAL_PRODUCTS } from '../data/initialData.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -113,6 +113,38 @@ export class DatabaseService {
       );
     `);
 
+    // 7. Site Settings & Branding (custom logo name, tagline, active themes)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS site_settings (
+        id TEXT PRIMARY KEY,
+        logo_name TEXT NOT NULL DEFAULT 'Find Niche',
+        tagline TEXT NOT NULL DEFAULT 'Better Products. Smarter Choices.',
+        hero_headline TEXT NOT NULL DEFAULT 'Curated Tech Essentials. Tested Without Bias.',
+        hero_subheadline TEXT NOT NULL DEFAULT 'Handpicked EDC, minimalist desk setups, and everyday tech gear with genuine editorial notes and direct Amazon access.',
+        announcement TEXT NOT NULL DEFAULT '',
+        admin_theme TEXT NOT NULL DEFAULT 'helios',
+        public_theme TEXT NOT NULL DEFAULT 'helios',
+        apply_to_public INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    // Ensure default settings row exists
+    const settingsRow = this.db.prepare("SELECT id FROM site_settings WHERE id = 'default'").get() as any;
+    if (!settingsRow) {
+      this.db.prepare(`
+        INSERT INTO site_settings (
+          id, logo_name, tagline, hero_headline, hero_subheadline,
+          announcement, admin_theme, public_theme, apply_to_public, updated_at
+        ) VALUES (
+          'default', 'Find Niche', 'Better Products. Smarter Choices.',
+          'Curated Tech Essentials. Tested Without Bias.',
+          'Handpicked EDC, minimalist desk setups, and everyday tech gear with genuine editorial notes and direct Amazon access.',
+          '', 'helios', 'helios', 0, ?
+        )
+      `).run(new Date().toISOString());
+    }
+
     // Initialize sequence if not present
     const seqRow = this.db.prepare("SELECT current_val FROM sequences WHERE name = 'product_number'").get() as any;
     if (!seqRow) {
@@ -132,10 +164,14 @@ export class DatabaseService {
     let initialProds = INITIAL_PRODUCTS;
 
     // Check if legacy data/db.json exists and parse it safely
+    let savedSettings: Partial<SiteSettings> | null = null;
     if (fs.existsSync(LEGACY_JSON_FILE)) {
       try {
         const raw = fs.readFileSync(LEGACY_JSON_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
+        if (parsed.settings && typeof parsed.settings === 'object') {
+          savedSettings = parsed.settings;
+        }
         if (parsed.categories && Array.isArray(parsed.categories) && parsed.categories.length > 0) {
           initialCats = parsed.categories;
         }
@@ -145,6 +181,10 @@ export class DatabaseService {
       } catch (e) {
         console.error('[DB] Error parsing legacy db.json, falling back to clean initial data', e);
       }
+    }
+
+    if (savedSettings) {
+      this.updateSiteSettings(savedSettings);
     }
 
     this.db.exec('BEGIN IMMEDIATE TRANSACTION;');
@@ -193,10 +233,9 @@ export class DatabaseService {
         const num = Number(p.product_number) || 1;
         if (num > maxProductNumber) maxProductNumber = num;
 
-        // Restore to published and not deleted if it was accidentally archived during test runs
-        const isSoftDeleted = p.deleted_at && p.status === 'archived' && num > 6;
-        const status = isSoftDeleted ? 'archived' : (p.status === 'archived' ? 'published' : p.status);
-        const deletedAt = isSoftDeleted ? p.deleted_at : null;
+        // Honor actual saved status and deleted timestamp permanently
+        const status = p.status || 'published';
+        const deletedAt = p.deleted_at || (status === 'archived' ? (p.updated_at || new Date().toISOString()) : null);
 
         insertProd.run(
           p.id || `prod-${crypto.randomUUID()}`,
@@ -325,6 +364,7 @@ export class DatabaseService {
     `).run(id, trimmed, slug, order, now, now);
 
     this.addAuditLog('category.created', `Created category "${trimmed}"`, id);
+    this.syncToFile();
 
     return {
       id,
@@ -356,6 +396,7 @@ export class DatabaseService {
     `).run(name, slug, isActive, order, now, id);
 
     this.addAuditLog('category.updated', `Updated category "${name}" (active: ${isActive === 1})`, id);
+    this.syncToFile();
 
     return {
       id,
@@ -552,6 +593,7 @@ export class DatabaseService {
     );
 
     this.addAuditLog('product.created', `Created product #${productNumber}: "${data.name}" (${data.status})`, id);
+    this.syncToFile();
 
     return this.getAdminProductById(id)!;
   }
@@ -600,6 +642,7 @@ export class DatabaseService {
     `).run(name, shortDesc, desc, catId, img, affUrl, market, cons, kp, uf, status, publishedAt, now, id);
 
     this.addAuditLog('product.updated', `Updated product #${existing.product_number}: "${name}"`, id);
+    this.syncToFile();
 
     return this.getAdminProductById(id);
   }
@@ -616,6 +659,7 @@ export class DatabaseService {
     `).run(now, now, id);
 
     this.addAuditLog('product.published', `Published product #${existing.product_number}: "${existing.name}"`, id);
+    this.syncToFile();
     return this.getAdminProductById(id);
   }
 
@@ -631,6 +675,7 @@ export class DatabaseService {
     `).run(now, id);
 
     this.addAuditLog('product.hidden', `Hid product #${existing.product_number}: "${existing.name}"`, id);
+    this.syncToFile();
     return this.getAdminProductById(id);
   }
 
@@ -647,7 +692,29 @@ export class DatabaseService {
     `).run(now, now, id);
 
     this.addAuditLog('product.deleted', `Soft-deleted product #${existing.product_number}: "${existing.name}". Permanent number reserved.`, id);
+    this.syncToFile();
     return true;
+  }
+
+  // Hard delete: Permanently deletes the product from database and removes all click history
+  public hardDeleteProduct(id: string): boolean {
+    const existing = this.getAdminProductById(id) || (this.db.prepare('SELECT * FROM products WHERE id = ?').get(id) as any);
+    if (!existing) return false;
+
+    this.db.exec('BEGIN IMMEDIATE TRANSACTION;');
+    try {
+      this.db.prepare('DELETE FROM product_clicks WHERE product_id = ?').run(id);
+      this.db.prepare('DELETE FROM products WHERE id = ?').run(id);
+      this.db.exec('COMMIT;');
+
+      this.addAuditLog('product.hard_deleted', `Permanently deleted product #${existing.product_number}: "${existing.name}".`, id);
+      this.syncToFile();
+      return true;
+    } catch (e) {
+      this.db.exec('ROLLBACK;');
+      console.error('[DB] Failed to hard delete product:', e);
+      return false;
+    }
   }
 
   // --- Click Analytics (Strict Rate Limiting & Published Only) ---
@@ -793,6 +860,91 @@ export class DatabaseService {
   public cleanExpiredSessions() {
     const now = new Date().toISOString();
     this.db.prepare('DELETE FROM admin_sessions WHERE expires_at <= ?').run(now);
+  }
+
+  // --- Site Settings & Branding ---
+  public getSiteSettings(): SiteSettings {
+    const row = this.db.prepare("SELECT * FROM site_settings WHERE id = 'default'").get() as any;
+    if (!row) {
+      return {
+        logo_name: 'Find Niche',
+        tagline: 'Better Products. Smarter Choices.',
+        hero_headline: 'Curated Tech Essentials. Tested Without Bias.',
+        hero_subheadline: 'Handpicked EDC, minimalist desk setups, and everyday tech gear with genuine editorial notes and direct Amazon access.',
+        announcement: '',
+        admin_theme: 'helios',
+        public_theme: 'helios',
+        apply_to_public: false,
+      };
+    }
+    return {
+      logo_name: row.logo_name || 'Find Niche',
+      tagline: row.tagline || 'Better Products. Smarter Choices.',
+      hero_headline: row.hero_headline || 'Curated Tech Essentials. Tested Without Bias.',
+      hero_subheadline: row.hero_subheadline || 'Handpicked EDC, minimalist desk setups, and everyday tech gear with genuine editorial notes and direct Amazon access.',
+      announcement: row.announcement || '',
+      admin_theme: (row.admin_theme as ThemeId) || 'helios',
+      public_theme: (row.public_theme as ThemeId) || 'helios',
+      apply_to_public: Boolean(row.apply_to_public),
+      updated_at: row.updated_at,
+    };
+  }
+
+  public updateSiteSettings(updates: Partial<SiteSettings>): SiteSettings {
+    const current = this.getSiteSettings();
+    const logoName = updates.logo_name !== undefined ? updates.logo_name.trim() : current.logo_name;
+    const tagline = updates.tagline !== undefined ? updates.tagline.trim() : current.tagline;
+    const heroHeadline = updates.hero_headline !== undefined ? updates.hero_headline.trim() : current.hero_headline;
+    const heroSubheadline = updates.hero_subheadline !== undefined ? updates.hero_subheadline.trim() : current.hero_subheadline;
+    const announcement = updates.announcement !== undefined ? updates.announcement.trim() : current.announcement;
+    const adminTheme = updates.admin_theme !== undefined ? updates.admin_theme : current.admin_theme;
+    const publicTheme = updates.public_theme !== undefined ? updates.public_theme : current.public_theme;
+    const applyToPublic = updates.apply_to_public !== undefined ? (updates.apply_to_public ? 1 : 0) : (current.apply_to_public ? 1 : 0);
+    const now = new Date().toISOString();
+
+    const stmt = this.db.prepare(`
+      INSERT INTO site_settings (
+        id, logo_name, tagline, hero_headline, hero_subheadline,
+        announcement, admin_theme, public_theme, apply_to_public, updated_at
+      ) VALUES (
+        'default', ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ) ON CONFLICT(id) DO UPDATE SET
+        logo_name = excluded.logo_name,
+        tagline = excluded.tagline,
+        hero_headline = excluded.hero_headline,
+        hero_subheadline = excluded.hero_subheadline,
+        announcement = excluded.announcement,
+        admin_theme = excluded.admin_theme,
+        public_theme = excluded.public_theme,
+        apply_to_public = excluded.apply_to_public,
+        updated_at = excluded.updated_at
+    `);
+    (stmt as any).run(logoName, tagline, heroHeadline, heroSubheadline, announcement, adminTheme, publicTheme, applyToPublic, now);
+
+    this.addAuditLog('settings.updated', `Updated site settings: logo="${logoName}", admin_theme="${adminTheme}", apply_public=${applyToPublic === 1}`);
+    this.syncToFile();
+
+    return this.getSiteSettings();
+  }
+
+  // --- Atomic File Persistence (Wiped Container Recovery) ---
+  public syncToFile(): void {
+    try {
+      const rows = this.db.prepare('SELECT * FROM products ORDER BY product_number ASC').all() as any[];
+      const prods = rows.map((r) => this.mapProductRow(r));
+      const cats = this.getCategories(false);
+      const settings = this.getSiteSettings();
+
+      const payload = {
+        settings,
+        categories: cats,
+        products: prods,
+      };
+
+      fs.writeFileSync(LEGACY_JSON_FILE, JSON.stringify(payload, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('[DB] Error writing to data/db.json:', err);
+    }
   }
 
   // Helper mapper

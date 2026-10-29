@@ -1,12 +1,13 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
-import { dbService } from './src/server/db';
-import { validateProductPayload, validateAffiliateUrl } from './src/server/validation';
-import { uploadMiddleware, saveUploadedImage, deleteUploadedImage } from './src/server/upload';
+import { dbService } from './src/server/db.ts';
+import { validateProductPayload, validateAffiliateUrl } from './src/server/validation.ts';
+import { uploadMiddleware, saveUploadedImage, deleteUploadedImage } from './src/server/upload.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -190,12 +191,13 @@ app.post('/api/admin/login', (req, res) => {
   dbService.createSession(sessionId, expiresAt, ipHash);
   dbService.addAuditLog('admin.login_success', 'Owner signed in successfully.', undefined, 'owner');
 
-  // Set secure HttpOnly cookie
+  // Set secure HttpOnly cookie (compatible with iframe and cross-origin embedding)
   const isProd = process.env.NODE_ENV === 'production';
+  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
   res.cookie(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
-    secure: isProd || req.secure || req.headers['x-forwarded-proto'] === 'https',
-    sameSite: 'lax',
+    secure: isHttps || isProd,
+    sameSite: isHttps || isProd ? 'none' : 'lax',
     path: '/',
     expires: expiresAt,
   });
@@ -221,6 +223,12 @@ app.post('/api/admin/logout', (req, res) => {
 
   res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
   res.json({ success: true, message: 'Signed out.' });
+});
+
+// Public: Get Site Settings & Branding (Logo name, theme, tagline, announcement)
+app.get('/api/settings', (req, res) => {
+  const settings = dbService.getSiteSettings();
+  res.json({ settings });
 });
 
 // Public: Get Active Categories
@@ -410,6 +418,15 @@ app.delete('/api/admin/products/:id', requireAdmin, (req, res) => {
   res.json({ success: true, message: 'Product archived. Permanent product number reserved.' });
 });
 
+// Admin: Permanent Hard Delete Product (completely removes product and its records)
+app.delete('/api/admin/products/:id/permanent', requireAdmin, (req, res) => {
+  const success = dbService.hardDeleteProduct(req.params.id);
+  if (!success) {
+    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Product not found.' } });
+  }
+  res.json({ success: true, message: 'Product deleted permanently.' });
+});
+
 // Admin: Image Upload Endpoint
 app.post('/api/admin/uploads', requireAdmin, uploadMiddleware.single('image'), (req, res) => {
   if (!req.file) {
@@ -492,6 +509,12 @@ app.get('/api/admin/export', requireAdmin, (req, res) => {
       categories,
     },
   });
+});
+
+// Admin: Update Site Settings & Branding (Logo name, tagline, theme selection)
+app.patch('/api/admin/settings', requireAdmin, (req, res) => {
+  const updated = dbService.updateSiteSettings(req.body);
+  res.json({ settings: updated });
 });
 
 // Mount Vite in dev mode or serve static files in production

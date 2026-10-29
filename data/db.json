@@ -1,4 +1,57 @@
 {
+  "settings": {
+    "logo_name": "Find Niche",
+    "tagline": "Curated Gear & Setup Essentials",
+    "hero_headline": "Curated Tech Essentials. Tested Without Bias.",
+    "hero_subheadline": "Handpicked EDC, minimalist desk setups, and everyday tech gear with genuine editorial notes and direct Amazon access.",
+    "announcement": "",
+    "admin_theme": "helios",
+    "public_theme": "helios",
+    "apply_to_public": false,
+    "updated_at": "2026-10-29T16:06:28.281Z"
+  },
+  "categories": [
+    {
+      "id": "cat-home",
+      "name": "Home",
+      "slug": "home",
+      "display_order": 1,
+      "is_active": true,
+      "created_at": "2026-10-01T00:00:00.000Z",
+      "updated_at": "2026-10-16T19:12:16.306Z",
+      "product_count": 2
+    },
+    {
+      "id": "cat-tech",
+      "name": "Tech",
+      "slug": "tech",
+      "display_order": 2,
+      "is_active": true,
+      "created_at": "2026-10-01T00:00:00.000Z",
+      "updated_at": "2026-10-16T19:12:04.898Z",
+      "product_count": 2
+    },
+    {
+      "id": "cat-phone",
+      "name": "Phone",
+      "slug": "phone",
+      "display_order": 3,
+      "is_active": true,
+      "created_at": "2026-10-01T00:00:00.000Z",
+      "updated_at": "2026-10-16T19:12:06.252Z",
+      "product_count": 1
+    },
+    {
+      "id": "cat-body",
+      "name": "Body",
+      "slug": "body",
+      "display_order": 4,
+      "is_active": true,
+      "created_at": "2026-10-01T00:00:00.000Z",
+      "updated_at": "2026-10-16T19:12:08.099Z",
+      "product_count": 1
+    }
+  ],
   "products": [
     {
       "id": "prod-001",
@@ -20,7 +73,7 @@
       ],
       "considerations": "Capacity is 5,000mAh optimized for portability over multi-day backpacking trips. Requires a MagSafe-compatible phone or magnetic ring case.",
       "category_id": "cat-phone",
-      "image_path": "/src/assets/images/magsafe_power_bank_1791747842268.jpg",
+      "image_path": "/images/magsafe_power_bank_1791747842268.jpg",
       "affiliate_url": "https://www.amazon.com/dp/B0CX23MAG1?tag=findniche-20",
       "marketplace_code": "US",
       "status": "published",
@@ -29,7 +82,7 @@
       "published_at": "2026-10-01T10:00:00.000Z",
       "deleted_at": null,
       "view_count": 142,
-      "click_count": 29
+      "click_count": 30
     },
     {
       "id": "prod-002",
@@ -51,7 +104,7 @@
       ],
       "considerations": "When two devices are connected simultaneously, power splits to 45W and 20W. USB-C charging cable sold separately.",
       "category_id": "cat-tech",
-      "image_path": "/src/assets/images/gan_compact_charger_1791747854699.jpg",
+      "image_path": "/images/gan_compact_charger_1791747854699.jpg",
       "affiliate_url": "https://www.amazon.com/dp/B0C9GAN65W?tag=findniche-20",
       "marketplace_code": "US",
       "status": "published",
@@ -82,7 +135,7 @@
       ],
       "considerations": "Requires monitor bezel depth between 0.4 to 1.8 inches. Not suitable for monitors with top-mounted physical camera units.",
       "category_id": "cat-home",
-      "image_path": "/src/assets/images/desk_screenbar_light_1791747866894.jpg",
+      "image_path": "/images/desk_screenbar_light_1791747866894.jpg",
       "affiliate_url": "https://www.amazon.com/dp/B0B8SCRBAR?tag=findniche-20",
       "marketplace_code": "US",
       "status": "published",
@@ -113,7 +166,7 @@
       ],
       "considerations": "Designed specifically for right-handed users. May take 2–3 days to adapt to the vertical grip muscle memory.",
       "category_id": "cat-tech",
-      "image_path": "/src/assets/images/ergonomic_vertical_mouse_1791747877658.jpg",
+      "image_path": "/images/ergonomic_vertical_mouse_1791747877658.jpg",
       "affiliate_url": "https://www.amazon.com/dp/B0B3VRTMSE?tag=findniche-20",
       "marketplace_code": "US",
       "status": "published",
@@ -144,7 +197,7 @@
       ],
       "considerations": "Accommodates standard cables up to 4.2mm in diameter. Extra thick audio cables may require third-party clips.",
       "category_id": "cat-home",
-      "image_path": "/src/assets/images/magnetic_cable_dock_1791747890185.jpg",
+      "image_path": "/images/magnetic_cable_dock_1791747890185.jpg",
       "affiliate_url": "https://www.amazon.com/dp/B0A7CBDOCK?tag=findniche-20",
       "marketplace_code": "US",
       "status": "published",
@@ -175,7 +228,7 @@
       ],
       "considerations": "Includes hypoallergenic silicone medical adhesive pads. Users with sensitive skin may prefer the magnetic collar clip attachment.",
       "category_id": "cat-body",
-      "image_path": "/src/assets/images/ergonomic_vertical_mouse_1791747877658.jpg",
+      "image_path": "/images/ergonomic_vertical_mouse_1791747877658.jpg",
       "affiliate_url": "https://www.amazon.com/dp/B0D1POSTUR?tag=findniche-20",
       "marketplace_code": "US",
       "status": "published",
@@ -183,71 +236,52 @@
       "updated_at": "2026-10-06T15:00:00.000Z",
       "published_at": "2026-10-06T15:00:00.000Z",
       "deleted_at": null,
-      "view_count": 112,
+      "view_count": 113,
       "click_count": 19
-    }
-  ],
-  "categories": [
-    {
-      "id": "cat-home",
-      "name": "Home",
-      "slug": "home",
-      "display_order": 1,
-      "is_active": true,
-      "created_at": "2026-10-01T00:00:00.000Z",
-      "updated_at": "2026-10-01T00:00:00.000Z"
     },
     {
-      "id": "cat-tech",
-      "name": "Tech",
-      "slug": "tech",
-      "display_order": 2,
-      "is_active": true,
-      "created_at": "2026-10-01T00:00:00.000Z",
-      "updated_at": "2026-10-01T00:00:00.000Z"
+      "id": "prod-5541f99c-0fcd-4d89-a924-248b0548412f",
+      "product_number": 7,
+      "slug": "test-draft-product-item",
+      "name": "Test Draft Product Item",
+      "short_description": "Test draft item description",
+      "description": "Draft review",
+      "key_points": [],
+      "useful_for": [],
+      "considerations": "",
+      "category_id": "cat-tech",
+      "image_path": "/images/gan_compact_charger_1791747854699.jpg",
+      "affiliate_url": "https://www.amazon.com/dp/B0TESTITEM?tag=findniche-20",
+      "marketplace_code": "US",
+      "status": "archived",
+      "created_at": "2026-10-16T19:21:41.703Z",
+      "updated_at": "2026-10-16T19:21:41.713Z",
+      "published_at": null,
+      "deleted_at": "2026-10-16T19:21:41.713Z",
+      "view_count": 0,
+      "click_count": 0
     },
     {
-      "id": "cat-phone",
-      "name": "Phone",
-      "slug": "phone",
-      "display_order": 3,
-      "is_active": true,
-      "created_at": "2026-10-01T00:00:00.000Z",
-      "updated_at": "2026-10-01T00:00:00.000Z"
-    },
-    {
-      "id": "cat-body",
-      "name": "Body",
-      "slug": "body",
-      "display_order": 4,
-      "is_active": true,
-      "created_at": "2026-10-01T00:00:00.000Z",
-      "updated_at": "2026-10-01T00:00:00.000Z"
+      "id": "prod-76ee3585-6875-4b9e-9d93-e370f2fcb595",
+      "product_number": 8,
+      "slug": "subsequent-item",
+      "name": "Subsequent Item",
+      "short_description": "Subsequent item description",
+      "description": "Subsequent review",
+      "key_points": [],
+      "useful_for": [],
+      "considerations": "",
+      "category_id": "cat-tech",
+      "image_path": "/images/gan_compact_charger_1791747854699.jpg",
+      "affiliate_url": "https://www.amazon.com/dp/B0NEXTITEM?tag=findniche-20",
+      "marketplace_code": "US",
+      "status": "archived",
+      "created_at": "2026-10-16T19:21:41.716Z",
+      "updated_at": "2026-10-16T19:21:41.719Z",
+      "published_at": null,
+      "deleted_at": "2026-10-16T19:21:41.719Z",
+      "view_count": 0,
+      "click_count": 0
     }
-  ],
-  "clicks": [
-    {
-      "id": "click-1791748605985-alf8",
-      "product_id": "prod-001",
-      "product_name": "Ultra-Slim Magnetic Wireless Power Bank",
-      "product_number": 1,
-      "clicked_at": "2026-10-11T19:56:45.985Z",
-      "source": "catalog_card"
-    }
-  ],
-  "audit_logs": [
-    {
-      "id": "audit-1791748577212-8aai0",
-      "action": "admin.login_success",
-      "details": "Administrator authenticated successfully.",
-      "timestamp": "2026-10-11T19:56:17.212Z"
-    },
-    {
-      "id": "audit-init",
-      "action": "system.init",
-      "details": "Find Niche database initialized with default catalog.",
-      "timestamp": "2026-10-11T19:55:40.789Z"
-    }
-  ],
-  "next_product_number": 7
+  ]
 }

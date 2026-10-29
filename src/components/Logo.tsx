@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { useSiteSettings } from '../lib/settingsStore';
+import { getTheme } from '../lib/themes';
 
 interface LogoProps {
   onSecretAdminTrigger?: () => void;
@@ -11,6 +13,9 @@ export const Logo: React.FC<LogoProps> = ({
   showTagline = true,
   className = '',
 }) => {
+  const { settings } = useSiteSettings();
+  const theme = getTheme(settings.apply_to_public ? settings.public_theme : 'emerald');
+
   const [justTapped, setJustTapped] = useState(false);
   const tapTimesRef = useRef<number[]>([]);
 
@@ -35,22 +40,26 @@ export const Logo: React.FC<LogoProps> = ({
     }
   };
 
+  const displayName = settings.logo_name || 'Find Niche';
+  const displayTagline = settings.tagline || 'Better Products. Smarter Choices.';
+
   return (
     <div
       onClick={handleLogoTap}
       className={`cursor-pointer select-none flex items-center gap-2.5 transition-transform active:scale-95 ${className}`}
-      title="Find Niche"
+      title={`${displayName} (Tap 5 times for Admin access)`}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter') handleLogoTap(e as any);
       }}
     >
-      {/* Sleek Compass Logo in Brand Forest Green (#2E5B3E) */}
+      {/* Sleek Compass Emblem with Dynamic Theme Accent */}
       <div
-        className={`w-8 h-8 rounded-full bg-[#2E5B3E] text-white flex items-center justify-center shrink-0 shadow-xs transition-transform ${
+        className={`w-8 h-8 rounded-full text-white flex items-center justify-center shrink-0 shadow-xs transition-all duration-300 ${
           justTapped ? 'scale-110' : ''
         }`}
+        style={{ backgroundColor: theme.swatch.accent }}
       >
         <svg
           viewBox="0 0 24 24"
@@ -71,12 +80,12 @@ export const Logo: React.FC<LogoProps> = ({
       </div>
 
       <div className="flex flex-col text-left">
-        <span className="font-bold text-base leading-tight text-zinc-950 tracking-tight">
-          Find Niche
+        <span className="font-bold text-base leading-tight tracking-tight text-inherit">
+          {displayName}
         </span>
         {showTagline && (
           <span className="text-[10px] text-zinc-500 font-medium tracking-tight">
-            Better Products. Smarter Choices.
+            {displayTagline}
           </span>
         )}
       </div>

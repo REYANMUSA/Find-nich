@@ -1,4 +1,4 @@
-import { Category, Product, MarketplaceConfig } from '../types';
+import type { Category, Product, MarketplaceConfig } from '../types/index.ts';
 
 export const MARKETPLACES: MarketplaceConfig[] = [
   { code: 'US', name: 'Amazon United States', domain: 'amazon.com', defaultTag: 'findniche-20' },

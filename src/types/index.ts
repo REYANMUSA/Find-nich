@@ -58,3 +58,25 @@ export interface MarketplaceConfig {
   domain: string;
   defaultTag: string;
 }
+
+export type ThemeId =
+  | 'helios'
+  | 'emerald'
+  | 'cyber'
+  | 'amber'
+  | 'amethyst'
+  | 'slate'
+  | 'titanium'
+  | 'crimson';
+
+export interface SiteSettings {
+  logo_name: string;
+  tagline: string;
+  hero_headline?: string;
+  hero_subheadline?: string;
+  announcement?: string;
+  admin_theme: ThemeId;
+  public_theme: ThemeId;
+  apply_to_public: boolean;
+  updated_at?: string;
+}
