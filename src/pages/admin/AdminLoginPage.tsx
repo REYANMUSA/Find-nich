@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Eye, EyeOff, AlertCircle, ArrowLeft, KeyRound, Sparkles, Check, ChevronRight } from 'lucide-react';
+import { Shield, Eye, EyeOff, AlertCircle, ArrowLeft, Sparkles, Check, ChevronRight } from 'lucide-react';
 import { adminLogin } from '../../lib/api';
 import { useSiteSettings } from '../../lib/settingsStore';
 import { THEMES, THEME_LIST, getTheme } from '../../lib/themes';
@@ -26,11 +26,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   const handleSelectTheme = (id: ThemeId) => {
     setActiveThemeId(id);
     setAdminTheme(id);
-  };
-
-  const handleQuickFill = () => {
-    setPasscode('findniche2026');
-    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,7 +82,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
           className={`${currentTheme.classes.bgCard} border ${currentTheme.classes.borderCard} rounded-2xl p-6 sm:p-8 shadow-2xl relative backdrop-blur-xl transition-all duration-300`}
         >
           {/* Card Top Pill Badge */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center mb-6">
             <div className="flex items-center gap-2">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md transition-colors duration-300"
@@ -103,19 +98,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   {settings.logo_name || 'Find Niche'}
                 </span>
               </div>
-            </div>
-
-            {/* Quick Demo Helper Button */}
-            <button
-              type="button"
-              onClick={handleQuickFill}
-              className="text-[11px] text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
-              title="Autofill standard passcode"
-            >
-              <KeyRound className="w-3 h-3 text-amber-400" />
-              <span>Autofill</span>
-            </button>
-          </div>
+            </div>          </div>
 
           <div className="space-y-1 mb-6 text-left">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
@@ -146,7 +129,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   type={showPassword ? 'text' : 'password'}
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
-                  placeholder="Enter passcode (e.g. findniche2026)"
+                  placeholder="Enter your administrator passcode"
                   required
                   autoFocus
                   autoComplete="current-password"
@@ -236,7 +219,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
           <span>{settings.tagline || 'Better Products. Smarter Choices.'}</span>
         </div>
         <p className="text-[10px] text-zinc-400 mt-1">
-          Instant login with permanent changes & multi-theme selector
+          Secure owner access · Cloud-saved products and branding
         </p>
       </footer>
     </div>

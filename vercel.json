@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://savhkwbkiywlvgflfzht.supabase.co/functions/v1/find-niche-api/api/:path*"
+    }
+  ]
+}
