@@ -14,7 +14,7 @@ export const Logo: React.FC<LogoProps> = ({
   className = '',
 }) => {
   const { settings } = useSiteSettings();
-  const theme = getTheme(settings.apply_to_public ? settings.public_theme : 'emerald');
+  const theme = getTheme(settings.apply_to_public ? settings.public_theme : 'helios');
 
   const [justTapped, setJustTapped] = useState(false);
   const tapTimesRef = useRef<number[]>([]);

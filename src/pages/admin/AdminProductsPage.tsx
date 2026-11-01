@@ -122,12 +122,17 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
     if (statusFilter !== 'all' && p.status !== statusFilter) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
+    
+    // Check custom code first (e.g. #07#00)
+    if (p.custom_code && p.custom_code.toLowerCase().includes(q)) return true;
+
+    // Check product number with or without # or leading zeroes
     const numMatch = q.match(/^#?0*(\d+)$/);
     if (numMatch) {
       const num = parseInt(numMatch[1], 10);
-      return p.product_number === num || p.name.toLowerCase().includes(q);
+      if (p.product_number === num) return true;
     }
-    return p.name.toLowerCase().includes(q) || p.short_description.toLowerCase().includes(q);
+    return p.name.toLowerCase().includes(q) || (p.short_description && p.short_description.toLowerCase().includes(q));
   });
 
   return (

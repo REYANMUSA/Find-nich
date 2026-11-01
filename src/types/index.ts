@@ -4,7 +4,8 @@ export type AmazonMarketplace = 'US' | 'UK' | 'CA' | 'DE' | 'FR' | 'ES' | 'IT' |
 
 export interface Product {
   id: string;
-  product_number: number; // Permanent unique sequential integer
+  product_number: number; // Adjustable integer product number
+  custom_code?: string; // Optional custom code like #07#00 or #07
   slug: string;
   name: string;
   short_description: string;
@@ -67,7 +68,8 @@ export type ThemeId =
   | 'amethyst'
   | 'slate'
   | 'titanium'
-  | 'crimson';
+  | 'crimson'
+  | 'classic';
 
 export interface SiteSettings {
   logo_name: string;

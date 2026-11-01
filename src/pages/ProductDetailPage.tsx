@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, ExternalLink, ShieldCheck, CheckCircle2, AlertCircle, Package, Bookmark } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ShieldCheck, CheckCircle2, AlertCircle, Package } from 'lucide-react';
 import { Product, Category } from '../types';
 import { fetchProductBySlug, fetchCategories, fetchProducts, trackOutboundClick, adminFetchProductBySlug, isAuthenticated } from '../lib/api';
-import { useSavedProducts } from '../lib/savedStore';
 import { ProductCard } from '../components/ProductCard';
+import { useSiteSettings } from '../lib/settingsStore';
+import { getTheme } from '../lib/themes';
 
 interface ProductDetailPageProps {
   slug: string;
@@ -16,13 +17,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   onBack,
   onNavigateProduct,
 }) => {
+  const { settings } = useSiteSettings();
+  const theme = getTheme(settings.public_theme || 'helios');
+
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [isAdminPreview, setIsAdminPreview] = useState(false);
-  const { isSaved, toggleSave } = useSavedProducts();
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -68,66 +71,59 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center space-y-4 animate-pulse">
-        <div className="w-16 h-16 bg-zinc-100 rounded-full mx-auto" />
-        <div className="h-4 bg-zinc-100 rounded w-48 mx-auto" />
-        <div className="h-3 bg-zinc-100 rounded w-32 mx-auto" />
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <div className="w-12 h-12 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs text-zinc-400 font-mono">Loading product overview...</p>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-6">
-        <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mx-auto text-zinc-400">
-          <Package className="w-8 h-8 stroke-[1.5]" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-xl font-bold text-zinc-950">Item Not Found</h1>
-          <p className="text-xs sm:text-sm text-zinc-500">
-            This item may be inactive, out of stock, or archived from the public catalog.
-          </p>
-        </div>
+      <div className="max-w-md mx-auto px-4 py-20 text-center space-y-4">
+        <Package className="w-12 h-12 text-zinc-600 mx-auto" />
+        <h2 className="text-lg font-bold text-white">Product Not Available</h2>
+        <p className="text-xs text-zinc-400">
+          This item could not be found or has been withdrawn from public view.
+        </p>
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2E5B3E] text-white text-xs font-semibold rounded hover:bg-[#234832] transition-colors shadow-xs"
+          className="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-xl transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Return to Catalog</span>
+          Return to Catalog
         </button>
       </div>
     );
   }
 
   const categoryName = categories.find((c) => c.id === product.category_id)?.name || 'Tech';
-  const formattedNumber = `#${product.product_number.toString().padStart(3, '0')}`;
-  const saved = isSaved(product.id);
+  const displayCode = product.custom_code || `#${product.product_number.toString().padStart(3, '0')}`;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-12 pb-28 md:pb-12">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-12 text-left pb-28 md:pb-16">
       {/* Back Button & Preview Indicator */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-950 transition-colors py-1"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors py-1.5 px-3 rounded-lg hover:bg-white/5"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="w-4 h-4" />
           <span>Back to catalog</span>
         </button>
 
         {isAdminPreview && (
-          <div className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-900 rounded text-xs font-medium flex items-center gap-1.5 self-start sm:self-auto">
-            <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-            <span>Private Preview Mode: Item status is currently &quot;{product.status}&quot;</span>
+          <div className="px-3 py-1 bg-amber-950/60 border border-amber-800/60 text-amber-300 rounded-lg text-xs font-medium flex items-center gap-1.5 self-start sm:self-auto">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+            <span>Admin Preview Mode: Item status is &quot;{product.status}&quot;</span>
           </div>
         )}
       </div>
 
       {/* Hero Split Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
-        {/* Left Column: Visual Presentation */}
+        {/* Left Column: Visual Presentation with Glass Card */}
         <div className="space-y-3">
-          <div className="relative aspect-[4/3] w-full bg-zinc-100 rounded-lg border border-zinc-200 overflow-hidden shadow-xs">
+          <div className="relative aspect-[4/3] w-full bg-black/40 rounded-2xl border border-white/10 overflow-hidden shadow-2xl backdrop-blur-xl">
             {!imageError && product.image_path ? (
               <img
                 src={product.image_path}
@@ -138,199 +134,144 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-100 text-zinc-400 p-8 text-center">
-                <Package className="w-12 h-12 stroke-[1.5] mb-2 text-zinc-400" />
-                <span className="text-xs font-mono text-zinc-500">{formattedNumber}</span>
+              <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/60 text-zinc-500 p-8 text-center">
+                <Package className="w-12 h-12 stroke-[1.5] mb-2 text-zinc-600" />
+                <span className="text-xs font-mono text-zinc-500">{displayCode}</span>
               </div>
             )}
 
-            {/* Permanent Tag */}
-            <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded text-xs font-mono font-bold text-zinc-900 border border-zinc-200 shadow-xs">
-              {formattedNumber}
+            {/* Permanent Code Tag */}
+            <div className="absolute top-3.5 left-3.5 bg-[#0B0D14]/85 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-violet-300 border border-white/10 shadow-lg">
+              {displayCode}
             </div>
-
-            {/* Bookmark button on image */}
-            <button
-              onClick={() => toggleSave(product.id)}
-              className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                saved
-                  ? 'bg-[#2E5B3E] text-white shadow-xs'
-                  : 'bg-white/95 backdrop-blur-xs text-zinc-600 hover:text-zinc-950 hover:bg-white border border-zinc-200 shadow-xs'
-              }`}
-              title={saved ? 'Remove from saved' : 'Save product'}
-              aria-label={saved ? 'Remove from saved' : 'Save product'}
-            >
-              <Bookmark className={`w-4 h-4 ${saved ? 'fill-white stroke-white' : 'stroke-[2]'}`} />
-            </button>
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono px-1">
-            <span>Find Niche Curated Hardware</span>
-            <span>Permanent ID: {product.id.slice(0, 8)}</span>
+            <span>Verified Gear Curation</span>
+            <span>ID: {product.id.slice(0, 10)}</span>
           </div>
         </div>
 
         {/* Right Column: Contiguous Purchase Module */}
         <div className="space-y-6">
-          <div className="space-y-2">
+          <div className="space-y-3">
             {/* Category Breadcrumb */}
-            <div className="flex items-center gap-2 text-xs font-medium text-zinc-500">
-              <span className="uppercase tracking-wider font-semibold text-zinc-900">{categoryName}</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono">{formattedNumber}</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono text-zinc-600">Amazon {product.marketplace_code || 'US'}</span>
+            <div className="flex items-center gap-2 text-xs font-medium text-zinc-400">
+              <span className="uppercase tracking-wider font-bold" style={{ color: theme.swatch.accent }}>{categoryName}</span>
+              <span aria-hidden="true" className="text-zinc-600">·</span>
+              <span className="font-mono text-zinc-300 font-bold">{displayCode}</span>
+              <span aria-hidden="true" className="text-zinc-600">·</span>
+              <span className="font-mono text-zinc-400">Amazon {product.marketplace_code || 'US'}</span>
             </div>
 
             {/* Product Title */}
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-950 leading-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
               {product.name}
             </h1>
 
-            {/* Short High-Impact Verdict */}
-            <p className="text-sm sm:text-base text-zinc-600 leading-relaxed font-normal pt-1">
+            {/* Short Verdict */}
+            <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal pt-1">
               {product.short_description}
             </p>
           </div>
 
-          {/* Primary Affiliate Action Box */}
-          <div className="p-4 sm:p-5 bg-zinc-50 border border-zinc-200 rounded-lg space-y-3">
-            <div className="flex items-center gap-2">
-              <a
-                href={product.affiliate_url}
-                target="_blank"
-                rel="noopener noreferrer sponsored"
-                onClick={() => trackOutboundClick(product.id, 'product_detail')}
-                className="flex-1 min-h-[48px] px-5 py-3 bg-[#2E5B3E] hover:bg-[#234832] text-white text-sm font-semibold rounded flex items-center justify-center gap-2 transition-colors shadow-xs active:scale-[0.99]"
-              >
-                <span>Check price on Amazon</span>
-                <ExternalLink className="w-4 h-4 shrink-0 opacity-90" />
-              </a>
+          {/* Primary Affiliate Action Box (Glassmorphism) */}
+          <div className="p-5 sm:p-6 bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl space-y-4 shadow-xl">
+            <a
+              href={product.affiliate_url}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              onClick={() => trackOutboundClick(product.id, 'product_detail')}
+              className={`w-full min-h-[48px] px-6 py-3.5 ${theme.classes.accentButton} text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.99]`}
+            >
+              <span>View Product on Amazon</span>
+              <ExternalLink className="w-4 h-4 shrink-0" />
+            </a>
 
-              <button
-                onClick={() => toggleSave(product.id)}
-                className={`w-12 h-12 shrink-0 rounded flex items-center justify-center border transition-colors ${
-                  saved
-                    ? 'bg-[#2E5B3E] text-white border-[#2E5B3E] shadow-xs'
-                    : 'bg-white text-zinc-700 hover:text-zinc-950 border-zinc-200 hover:border-zinc-300'
-                }`}
-                title={saved ? 'Saved' : 'Save'}
-                aria-label={saved ? 'Remove from saved' : 'Save'}
-              >
-                <Bookmark className={`w-4 h-4 ${saved ? 'fill-white stroke-white' : 'stroke-[2]'}`} />
-              </button>
-            </div>
-
-            {/* Amazon Associates Immediate Disclosure */}
-            <div className="flex items-start gap-2 pt-1 text-[11px] text-zinc-500 leading-relaxed">
-              <ShieldCheck className="w-4 h-4 text-[#2E5B3E] shrink-0 mt-0.5" />
-              <p>
-                <strong>Affiliate Link:</strong> As an Amazon Associate I earn from qualifying purchases. Clicking routes directly to official Amazon listings where current price and shipping details are verified.
-              </p>
-            </div>
-          </div>
-
-          {/* Quick Snapshot Specs */}
-          <div className="pt-2 border-t border-zinc-100 grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <span className="text-zinc-400 block text-[11px]">Item Identifier</span>
-              <span className="font-mono font-medium text-zinc-800">{formattedNumber}</span>
-            </div>
-            <div>
-              <span className="text-zinc-400 block text-[11px]">Approved Marketplace</span>
-              <span className="font-medium text-zinc-800">Amazon {product.marketplace_code || 'US'}</span>
+            <div className="flex items-center gap-2 text-[11px] text-zinc-400 justify-center">
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" style={{ color: theme.swatch.accent }} />
+              <span>Direct official Amazon Associates access link</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Editorial Content Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-zinc-200">
-        {/* Left 2 Cols: Honest Long Description & Highlights */}
-        <div className="md:col-span-2 space-y-8">
-          {/* Detailed Editorial Recommendation */}
-          <div className="space-y-3">
-            <h2 className="text-base font-bold text-zinc-900 uppercase tracking-wider text-xs">
-              Recommendation Notes
+      {/* Editorial Evaluation Section (Why it made the cut) */}
+      <div className="space-y-8 pt-6 border-t border-white/[0.08]">
+        {/* Full Editorial Note */}
+        {product.description && (
+          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 sm:p-8 space-y-3 shadow-lg">
+            <h2 className="text-sm font-mono uppercase tracking-wider font-bold" style={{ color: theme.swatch.accent }}>
+              Editorial Evaluation & Testing
             </h2>
-            <div className="text-sm text-zinc-700 leading-relaxed space-y-3">
-              <p>{product.description}</p>
-            </div>
+            <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
+              {product.description}
+            </p>
           </div>
+        )}
 
-          {/* Key Features */}
+        {/* 2-Column Evaluation Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Key Points */}
           {product.key_points && product.key_points.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-base font-bold text-zinc-900 uppercase tracking-wider text-xs">
-                Key Features
-              </h2>
-              <ul className="space-y-2">
+            <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 space-y-4 shadow-lg">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Key Technical Highlights</span>
+              </h3>
+              <ul className="space-y-2.5 text-xs text-zinc-300">
                 {product.key_points.map((pt, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-xs sm:text-sm text-zinc-700">
-                    <CheckCircle2 className="w-4 h-4 text-zinc-900 shrink-0 mt-0.5" />
-                    <span>{pt}</span>
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: theme.swatch.accent }} />
+                    <span className="leading-relaxed">{pt}</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Useful For Scenarios */}
+          {/* Who it is useful for */}
           {product.useful_for && product.useful_for.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-base font-bold text-zinc-900 uppercase tracking-wider text-xs">
-                Best Suited For
-              </h2>
-              <div className="flex flex-wrap gap-2">
+            <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 space-y-4 shadow-lg">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 shrink-0" style={{ color: theme.swatch.accent }} />
+                <span>Best Suited For</span>
+              </h3>
+              <ul className="space-y-2.5 text-xs text-zinc-300">
                 {product.useful_for.map((use, i) => (
-                  <span
-                    key={i}
-                    className="text-xs bg-zinc-100 text-zinc-800 px-3 py-1.5 rounded-full font-medium"
-                  >
-                    {use}
-                  </span>
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                    <span className="leading-relaxed">{use}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
         </div>
 
-        {/* Right Col: Honest Limitations / Considerations */}
-        <div className="space-y-6">
-          <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-5 space-y-3">
-            <div className="flex items-center gap-2 text-zinc-900">
-              <AlertCircle className="w-4 h-4 text-zinc-800" />
-              <h3 className="text-xs font-bold uppercase tracking-wider">
-                Honest Buying Notes
-              </h3>
+        {/* Considerations / Caveats */}
+        {product.considerations && (
+          <div className="p-5 bg-amber-950/30 border border-amber-800/40 rounded-2xl text-xs space-y-1.5">
+            <div className="flex items-center gap-2 font-bold text-amber-300">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Honest Trade-offs to Consider</span>
             </div>
-            <p className="text-xs text-zinc-600 leading-relaxed">
-              {product.considerations || 'Ensure dimensions and device ports match your setup before ordering. All purchases are backed by standard Amazon return policies.'}
+            <p className="text-amber-200/90 leading-relaxed pl-6">
+              {product.considerations}
             </p>
           </div>
-
-          <div className="text-xs text-zinc-400 space-y-1.5 p-4 border border-zinc-100 rounded-lg">
-            <p className="font-semibold text-zinc-700">Need help or questions?</p>
-            <p>Every product link routes to Amazon for current real-time inventory and customer reviews.</p>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Related Products in Same Category */}
+      {/* Related Products in Category */}
       {relatedProducts.length > 0 && (
-        <div className="pt-8 border-t border-zinc-200 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base sm:text-lg font-bold text-zinc-950">
-              More in {categoryName}
-            </h2>
-            <button
-              onClick={onBack}
-              className="text-xs font-medium text-zinc-600 hover:text-zinc-950"
-            >
-              View all
-            </button>
+        <div className="space-y-6 pt-6 border-t border-white/[0.08]">
+          <div>
+            <h2 className="text-lg font-bold text-white">More in {categoryName}</h2>
+            <p className="text-xs text-zinc-400">Other curated picks in this department.</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6">
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
             {relatedProducts.map((rel) => (
               <ProductCard
                 key={rel.id}
@@ -342,20 +283,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           </div>
         </div>
       )}
-
-      {/* Fixed Sticky Mobile Buy Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-zinc-200 z-30 shadow-lg pb-[calc(12px+env(safe-area-inset-bottom))]">
-        <a
-          href={product.affiliate_url}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
-          onClick={() => trackOutboundClick(product.id, 'product_detail')}
-          className="w-full min-h-[44px] px-4 py-2.5 bg-[#2E5B3E] hover:bg-[#234832] text-white text-xs font-semibold rounded flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-xs"
-        >
-          <span>Check price on Amazon</span>
-          <ExternalLink className="w-3.5 h-3.5 opacity-90" />
-        </a>
-      </div>
     </div>
   );
 };

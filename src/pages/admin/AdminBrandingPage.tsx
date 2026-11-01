@@ -15,7 +15,7 @@ export const AdminBrandingPage: React.FC = () => {
   const [announcementInput, setAnnouncementInput] = useState(settings.announcement || '');
   const [selectedAdminTheme, setSelectedAdminTheme] = useState<ThemeId>(settings.admin_theme || 'helios');
   const [selectedPublicTheme, setSelectedPublicTheme] = useState<ThemeId>(settings.public_theme || 'helios');
-  const [applyToPublicStore, setApplyToPublicStore] = useState(settings.apply_to_public || false);
+  const [applyToPublicStore, setApplyToPublicStore] = useState(settings.apply_to_public !== undefined ? settings.apply_to_public : true);
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -24,11 +24,17 @@ export const AdminBrandingPage: React.FC = () => {
 
   const handleSelectThemeOneTouch = (themeId: ThemeId) => {
     setSelectedAdminTheme(themeId);
+    setSelectedPublicTheme(themeId);
     setAdminTheme(themeId);
-    if (applyToPublicStore) {
-      setSelectedPublicTheme(themeId);
-      setPublicTheme(themeId);
-    }
+    setPublicTheme(themeId);
+    setApplyToPublic(true);
+
+    // Save to server immediately so the public website changes for everyone
+    adminUpdateSiteSettings({
+      admin_theme: themeId,
+      public_theme: themeId,
+      apply_to_public: true,
+    }).catch(() => {});
   };
 
   const handleSaveSettings = async (e?: React.FormEvent) => {
@@ -90,7 +96,8 @@ export const AdminBrandingPage: React.FC = () => {
           type="button"
           onClick={() => handleSaveSettings()}
           disabled={saving}
-          className="min-h-[44px] px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-violet-600/30 active:scale-95 transition-all self-start sm:self-auto"
+          className={`min-h-[44px] px-5 py-2.5 ${currentTheme.classes.accentBg} ${currentTheme.classes.accentHover} text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all self-start sm:self-auto`}
+          style={{ boxShadow: `0 8px 24px ${currentTheme.swatch.accent}40` }}
         >
           {saving ? (
             <>
@@ -360,7 +367,8 @@ export const AdminBrandingPage: React.FC = () => {
           type="button"
           onClick={() => handleSaveSettings()}
           disabled={saving}
-          className="w-full sm:w-auto min-h-[48px] px-8 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-2xl shadow-violet-600/50 active:scale-95 transition-all"
+          className={`w-full sm:w-auto min-h-[48px] px-8 py-3 ${currentTheme.classes.accentBg} ${currentTheme.classes.accentHover} text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-2xl active:scale-95 transition-all`}
+          style={{ boxShadow: `0 10px 30px ${currentTheme.swatch.accent}50` }}
         >
           {saving ? (
             <>

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Search, Bookmark } from 'lucide-react';
+import { Search, Compass, Shield } from 'lucide-react';
 import { Logo } from './Logo';
-import { useSavedProducts } from '../lib/savedStore';
+import { useSiteSettings } from '../lib/settingsStore';
+import { getTheme } from '../lib/themes';
 
 interface NavbarProps {
   currentPath: string;
@@ -14,10 +15,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   onSecretAdminTrigger,
 }) => {
-  const { savedIds } = useSavedProducts();
+  const { settings } = useSiteSettings();
+  const theme = getTheme(settings.public_theme || 'helios');
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-zinc-200">
+    <header className="sticky top-0 z-40 bg-[#0B0D14]/80 backdrop-blur-xl border-b border-white/[0.08] transition-colors duration-300 shadow-md">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
         {/* Logo with 5-tap Secret Admin Trigger */}
         <Logo
@@ -26,72 +28,55 @@ export const Navbar: React.FC<NavbarProps> = ({
         />
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-zinc-600">
+        <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-zinc-400">
           <button
             onClick={() => onNavigate('/')}
-            className={`transition-colors hover:text-[#2E5B3E] ${
-              currentPath === '/' ? 'text-[#2E5B3E] font-bold' : ''
+            className={`transition-colors hover:text-white ${
+              currentPath === '/' || currentPath === '' ? 'text-white font-bold' : ''
             }`}
           >
-            Catalog
+            Home
           </button>
           <button
             onClick={() => onNavigate('/categories')}
-            className={`transition-colors hover:text-[#2E5B3E] ${
-              currentPath.startsWith('/categories') ? 'text-[#2E5B3E] font-bold' : ''
+            className={`transition-colors hover:text-white ${
+              currentPath.startsWith('/categories') ? 'text-white font-bold' : ''
             }`}
           >
             Categories
           </button>
           <button
             onClick={() => onNavigate('/about')}
-            className={`transition-colors hover:text-[#2E5B3E] ${
-              currentPath === '/about' ? 'text-[#2E5B3E] font-bold' : ''
+            className={`transition-colors hover:text-white ${
+              currentPath === '/about' ? 'text-white font-bold' : ''
             }`}
           >
             About
           </button>
           <button
             onClick={() => onNavigate('/affiliate-disclosure')}
-            className={`transition-colors hover:text-[#2E5B3E] ${
-              currentPath === '/affiliate-disclosure' ? 'text-[#2E5B3E] font-bold' : ''
+            className={`transition-colors hover:text-white ${
+              currentPath === '/affiliate-disclosure' ? 'text-white font-bold' : ''
             }`}
           >
             Disclosure
           </button>
         </nav>
 
-        {/* Right side actions: Search & Saved items */}
-        <div className="flex items-center gap-1">
+        {/* Right side actions: Search */}
+        <div className="flex items-center gap-2">
           <button
             onClick={() => onNavigate('/search')}
-            className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
+            className={`h-9 px-3 sm:px-3.5 flex items-center gap-2 rounded-xl text-xs font-semibold border backdrop-blur-md transition-all ${
               currentPath === '/search'
-                ? 'bg-[#2E5B3E]/10 text-[#2E5B3E]'
-                : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                ? 'bg-violet-600/20 border-violet-500/50 text-white shadow-sm'
+                : 'bg-white/5 border-white/10 text-zinc-300 hover:text-white hover:bg-white/10 hover:border-white/20'
             }`}
-            title="Search Products"
+            title="Search Catalog"
             aria-label="Search"
           >
-            <Search className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => onNavigate('/saved')}
-            className={`w-10 h-10 relative flex items-center justify-center rounded-full transition-colors ${
-              currentPath === '/saved'
-                ? 'bg-[#2E5B3E]/10 text-[#2E5B3E]'
-                : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
-            }`}
-            title="Saved Products"
-            aria-label="Saved Products"
-          >
-            <Bookmark className="w-4 h-4" />
-            {savedIds.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#2E5B3E] text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                {savedIds.length > 9 ? '9+' : savedIds.length}
-              </span>
-            )}
+            <Search className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Search</span>
           </button>
         </div>
       </div>

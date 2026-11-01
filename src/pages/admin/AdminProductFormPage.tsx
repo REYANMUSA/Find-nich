@@ -18,6 +18,7 @@ import { Product, Category, AmazonMarketplace } from '../../types';
 import { MARKETPLACES } from '../../data/initialData.ts';
 import {
   adminFetchProductById,
+  adminFetchProducts,
   adminCreateProduct,
   adminUpdateProduct,
   adminFetchCategories,
@@ -52,12 +53,15 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form Fields
   const [permanentNumber, setPermanentNumber] = useState<number | null>(null);
+  const [adjustableNumber, setAdjustableNumber] = useState<string>('');
+  const [customCode, setCustomCode] = useState<string>('');
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [shortDescription, setShortDescription] = useState('');
@@ -76,10 +80,18 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
   const [showPresets, setShowPresets] = useState(false);
 
   useEffect(() => {
-    adminFetchCategories().then((cats) => {
+    Promise.all([adminFetchCategories(), adminFetchProducts()]).then(([cats, prods]) => {
       setCategories(cats);
+      setAllProducts(prods);
       if (cats.length > 0 && !categoryId) {
         setCategoryId(cats[0].id);
+      }
+      if (!productId) {
+        // Pre-allocate next unique product number
+        const maxNum = prods.length > 0 ? Math.max(...prods.map((p) => p.product_number || 0), 0) : 0;
+        const nextNum = maxNum + 1;
+        setAdjustableNumber(String(nextNum));
+        setCustomCode(`#${nextNum.toString().padStart(2, '0')}`);
       }
     });
 
@@ -87,6 +99,8 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
       adminFetchProductById(productId)
         .then((p) => {
           setPermanentNumber(p.product_number);
+          setAdjustableNumber(p.product_number !== undefined ? String(p.product_number) : '');
+          setCustomCode(p.custom_code || (p.product_number !== undefined ? `#${p.product_number.toString().padStart(2, '0')}` : ''));
           setName(p.name);
           setCategoryId(p.category_id);
           setShortDescription(p.short_description);
@@ -188,8 +202,22 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
     setSubmitting(true);
 
     try {
+      const parsedNum = adjustableNumber.trim() ? parseInt(adjustableNumber.trim(), 10) : undefined;
+      const finalCustomCode = customCode.trim() || (parsedNum !== undefined ? `#${parsedNum.toString().padStart(2, '0')}` : undefined);
+
+      // STRICT UNIQUENESS CHECK: Ensure product number is not duplicated
+      if (!isEditing && parsedNum !== undefined) {
+        const conflict = allProducts.find((p) => p.product_number === parsedNum);
+        if (conflict) {
+          setError(`Cannot save: Product number #${parsedNum} is already assigned to "${conflict.name}". Each product must have a unique number.`);
+          return;
+        }
+      }
+
       const payload: Partial<Product> = {
         name: name.trim(),
+        product_number: parsedNum,
+        custom_code: finalCustomCode,
         category_id: categoryId,
         short_description: shortDescription.trim(),
         description: description.trim(),
@@ -240,7 +268,9 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
         </button>
 
         <div className="text-xs font-mono text-zinc-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-          {permanentNumber ? (
+          {customCode ? (
+            <span className="font-bold text-violet-400">{customCode}</span>
+          ) : permanentNumber ? (
             <span className="font-bold text-white">Item #{permanentNumber.toString().padStart(3, '0')}</span>
           ) : (
             <span>Auto-allocated product #</span>
@@ -252,10 +282,10 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
         
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            {isEditing ? `Edit Item #${permanentNumber?.toString().padStart(3, '0')}` : 'Add New Tech Item'}
+            {isEditing ? `Edit Item ${customCode || `#${permanentNumber?.toString().padStart(3, '0')}`}` : 'Add New Item'}
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Fill in product details, verified photo, key bullet points, and Amazon Associates link.
+            Adjust product number, custom code (e.g. #07#00), photo, descriptions, and Amazon Associates link.
           </p>
         </div>
 
@@ -275,6 +305,70 @@ export const AdminProductFormPage: React.FC<AdminProductFormPageProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           
+          {/* Adjustable Product Number and Custom Code */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/10">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-zinc-300">
+                  Product Number (Adjustable)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdjustableNumber('1');
+                    setCustomCode('#01');
+                  }}
+                  className="px-2 py-0.5 text-[11px] font-mono font-bold rounded bg-violet-600/30 hover:bg-violet-600/50 text-violet-200 border border-violet-500/40 transition-colors"
+                  title="Make this item #1 (auto-swaps if another product has #1)"
+                >
+                  Make #1
+                </button>
+              </div>
+              <input
+                type="number"
+                value={adjustableNumber}
+                onChange={(e) => {
+                  setAdjustableNumber(e.target.value);
+                  if (e.target.value && (!customCode || customCode.startsWith('#'))) {
+                    setCustomCode(`#${e.target.value.padStart(2, '0')}`);
+                  }
+                }}
+                placeholder="e.g. 1, 7, or 42"
+                className="w-full h-11 px-4 text-sm font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
+              />
+              <p className="text-[11px] text-zinc-400">
+                Each product must have a unique number. If a number is already taken, you cannot duplicate it.
+              </p>
+              {(() => {
+                const enteredNum = adjustableNumber.trim() ? parseInt(adjustableNumber.trim(), 10) : null;
+                const conflict = enteredNum !== null ? allProducts.find((p) => p.product_number === enteredNum && p.id !== productId) : null;
+                if (!conflict) return null;
+                return (
+                  <div className="p-2.5 rounded-xl bg-red-950/80 border border-red-700/80 text-red-200 text-xs flex items-center gap-2 mt-2">
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                    <span>Number #{enteredNum} is already assigned to "{conflict.name}". Each product must have a unique single number.</span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-zinc-300">
+                Custom Tag Code / Identifier (e.g. #07#00)
+              </label>
+              <input
+                type="text"
+                value={customCode}
+                onChange={(e) => setCustomCode(e.target.value)}
+                placeholder="e.g. #07#00, #07, or #00"
+                className="w-full h-11 px-4 text-sm font-mono bg-[#0E101A] border border-white/10 rounded-xl text-violet-300 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
+              />
+              <p className="text-[11px] text-zinc-400">
+                Set custom codes like <span className="font-mono text-violet-400">#07#00</span>. Fully searchable in catalog!
+              </p>
+            </div>
+          </div>
+
           {/* Product Name */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-zinc-300">

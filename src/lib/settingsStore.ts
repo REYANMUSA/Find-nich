@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   announcement: '',
   admin_theme: 'helios',
   public_theme: 'helios',
-  apply_to_public: false,
+  apply_to_public: true,
 };
 
 let cachedSettings: SiteSettings = (() => {
@@ -48,22 +48,29 @@ export function updateCachedSettings(updates: Partial<SiteSettings>): SiteSettin
   return next;
 }
 
+export async function refreshSettingsFromServer(): Promise<SiteSettings | null> {
+  try {
+    const res = await fetch('/api/settings');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.settings) {
+        return updateCachedSettings(data.settings);
+      }
+    }
+  } catch {
+    // fallback to cache
+  }
+  return null;
+}
+
 export function useSiteSettings() {
   const [settings, setSettings] = useState<SiteSettings>(cachedSettings);
 
   useEffect(() => {
     listeners.add(setSettings);
-    // Fetch fresh settings from server quietly on mount
-    fetch('/api/settings')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.settings) {
-          updateCachedSettings(data.settings);
-        }
-      })
-      .catch(() => {
-        // use local cache
-      });
+    refreshSettingsFromServer().then((fresh) => {
+      if (fresh) setSettings(fresh);
+    });
 
     return () => {
       listeners.delete(setSettings);
@@ -72,7 +79,7 @@ export function useSiteSettings() {
 
   const setLogoName = (name: string) => updateCachedSettings({ logo_name: name });
   const setTagline = (tagline: string) => updateCachedSettings({ tagline });
-  const setAdminTheme = (theme: ThemeId) => updateCachedSettings({ admin_theme: theme });
+  const setAdminTheme = (theme: ThemeId) => updateCachedSettings({ admin_theme: theme, public_theme: theme, apply_to_public: true });
   const setPublicTheme = (theme: ThemeId) => updateCachedSettings({ public_theme: theme });
   const setApplyToPublic = (apply: boolean) => updateCachedSettings({ apply_to_public: apply });
 

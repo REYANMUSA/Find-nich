@@ -124,12 +124,19 @@ export class DatabaseService {
         announcement TEXT NOT NULL DEFAULT '',
         admin_theme TEXT NOT NULL DEFAULT 'helios',
         public_theme TEXT NOT NULL DEFAULT 'helios',
-        apply_to_public INTEGER NOT NULL DEFAULT 0,
+        apply_to_public INTEGER NOT NULL DEFAULT 1,
         updated_at TEXT NOT NULL
       );
     `);
 
-    // Ensure default settings row exists
+    // Ensure custom_code column exists on products table
+    try {
+      this.db.exec(`ALTER TABLE products ADD COLUMN custom_code TEXT;`);
+    } catch {
+      // Column already exists
+    }
+
+    // Ensure default settings row exists and apply_to_public is enabled
     const settingsRow = this.db.prepare("SELECT id FROM site_settings WHERE id = 'default'").get() as any;
     if (!settingsRow) {
       this.db.prepare(`
@@ -140,19 +147,88 @@ export class DatabaseService {
           'default', 'Find Niche', 'Better Products. Smarter Choices.',
           'Curated Tech Essentials. Tested Without Bias.',
           'Handpicked EDC, minimalist desk setups, and everyday tech gear with genuine editorial notes and direct Amazon access.',
-          '', 'helios', 'helios', 0, ?
+          '', 'helios', 'helios', 1, ?
         )
       `).run(new Date().toISOString());
+    } else {
+      // Enable apply_to_public by default so theme updates sync to public site
+      this.db.prepare("UPDATE site_settings SET apply_to_public = 1 WHERE id = 'default'").run();
     }
 
     // Initialize sequence if not present
     const seqRow = this.db.prepare("SELECT current_val FROM sequences WHERE name = 'product_number'").get() as any;
     if (!seqRow) {
-      this.db.prepare("INSERT INTO sequences (name, current_val) VALUES ('product_number', 0)").run();
+      this.db.prepare("INSERT INTO sequences (name, current_val) VALUES ('product_number', 12)").run();
+    }
+  }
+
+  private ensureCatalogSync() {
+    try {
+      // 1. Ensure all categories (including Kitchen, Desk, EDC)
+      const insertCat = this.db.prepare(`
+        INSERT OR IGNORE INTO categories (id, name, slug, display_order, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const cat of INITIAL_CATEGORIES) {
+        insertCat.run(
+          cat.id, cat.name, cat.slug, cat.display_order,
+          cat.is_active ? 1 : 0, cat.created_at, cat.updated_at
+        );
+      }
+
+      // 2. Ensure new curated products 7-12 exist
+      const insertProd = this.db.prepare(`
+        INSERT OR IGNORE INTO products (
+          id, product_number, custom_code, slug, name, short_description, description,
+          key_points, useful_for, considerations, category_id, image_path,
+          affiliate_url, marketplace_code, status, created_at, updated_at,
+          published_at, deleted_at, view_count, click_count
+        ) VALUES (
+          ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, NULL, ?, ?
+        )
+      `);
+
+      for (const p of INITIAL_PRODUCTS) {
+        const customCode = p.custom_code || `#${p.product_number.toString().padStart(2, '0')}`;
+        insertProd.run(
+          p.id,
+          p.product_number,
+          customCode,
+          p.slug,
+          p.name,
+          p.short_description,
+          p.description || '',
+          JSON.stringify(p.key_points || []),
+          JSON.stringify(p.useful_for || []),
+          p.considerations || '',
+          p.category_id,
+          p.image_path || '',
+          p.affiliate_url || '',
+          p.marketplace_code || 'US',
+          p.status || 'published',
+          p.created_at || new Date().toISOString(),
+          p.updated_at || new Date().toISOString(),
+          p.published_at || new Date().toISOString(),
+          p.view_count || 0,
+          p.click_count || 0
+        );
+      }
+
+      // Ensure sequence is at least 12
+      const seq = this.db.prepare("SELECT current_val FROM sequences WHERE name = 'product_number'").get() as any;
+      if (!seq || seq.current_val < 12) {
+        this.db.prepare("UPDATE sequences SET current_val = 12 WHERE name = 'product_number'").run();
+      }
+    } catch (e) {
+      console.warn('[DB] Catalog sync warning:', e);
     }
   }
 
   private migrateFromLegacyIfNeeded() {
+    this.ensureCatalogSync();
     const countRow = this.db.prepare('SELECT COUNT(*) as count FROM products').get() as any;
     if (countRow && countRow.count > 0) {
       return; // Already initialized with data
@@ -417,7 +493,7 @@ export class DatabaseService {
     sort?: string;
     page?: number;
     limit?: number;
-  }): { products: Product[]; total: number; page: number; limit: number; totalPages: number; hasMore: boolean } {
+  } = {}): { products: Product[]; total: number; page: number; limit: number; totalPages: number; hasMore: boolean } {
     const page = Math.max(1, params.page || 1);
     const limit = Math.max(1, Math.min(50, params.limit || 12));
     const offset = (page - 1) * limit;
@@ -431,18 +507,49 @@ export class DatabaseService {
       queryParams.push(params.category, params.category);
     }
 
-    // Filter by search query (name, short_description, or product_number)
+    // Filter by search query (name, short_description, custom_code, or product_number)
     if (params.q && params.q.trim()) {
       const qTrimmed = params.q.trim();
-      const numMatch = qTrimmed.match(/^#?0*(\d+)$/);
-      if (numMatch) {
-        const num = parseInt(numMatch[1], 10);
-        whereClause += ' AND (p.product_number = ? OR LOWER(p.name) LIKE ? OR LOWER(p.short_description) LIKE ?) ';
-        queryParams.push(num, `%${qTrimmed.toLowerCase()}%`, `%${qTrimmed.toLowerCase()}%`);
-      } else {
-        whereClause += ' AND (LOWER(p.name) LIKE ? OR LOWER(p.short_description) LIKE ? OR LOWER(p.description) LIKE ?) ';
-        queryParams.push(`%${qTrimmed.toLowerCase()}%`, `%${qTrimmed.toLowerCase()}%`, `%${qTrimmed.toLowerCase()}%`);
-      }
+      const cleanNum = qTrimmed.replace(/[^0-9]/g, '');
+      const parsedNum = cleanNum ? parseInt(cleanNum, 10) : null;
+      const pattern = `%${qTrimmed.toLowerCase()}%`;
+      const numPattern = cleanNum ? `%${cleanNum}%` : pattern;
+
+      whereClause += ` AND (
+        LOWER(p.name) LIKE ?
+        OR LOWER(p.short_description) LIKE ?
+        OR LOWER(p.description) LIKE ?
+        OR LOWER(p.slug) LIKE ?
+        OR LOWER(COALESCE(p.custom_code, '')) LIKE ?
+        OR (? IS NOT NULL AND p.product_number = ?)
+        OR ('#' || printf('%02d', p.product_number)) LIKE ?
+        OR ('#' || printf('%03d', p.product_number)) LIKE ?
+        OR ('#' || p.product_number) LIKE ?
+        OR (? IS NOT NULL AND printf('%02d', p.product_number) = ?)
+        OR (? IS NOT NULL AND printf('%03d', p.product_number) = ?)
+        OR (? IS NOT NULL AND printf('%d', p.product_number) = ?)
+        OR LOWER(COALESCE(p.custom_code, '')) LIKE ?
+      ) `;
+
+      queryParams.push(
+        pattern,
+        pattern,
+        pattern,
+        pattern,
+        pattern,
+        parsedNum,
+        parsedNum !== null ? parsedNum : -1,
+        pattern,
+        pattern,
+        pattern,
+        cleanNum || null,
+        cleanNum || '',
+        cleanNum || null,
+        cleanNum || '',
+        cleanNum || null,
+        cleanNum || '',
+        numPattern
+      );
     }
 
     // Sort order
@@ -453,6 +560,12 @@ export class DatabaseService {
       orderBy = ' ORDER BY p.product_number DESC ';
     } else if (params.sort === 'clicks') {
       orderBy = ' ORDER BY p.click_count DESC, p.created_at DESC ';
+    } else if (params.q && params.q.trim()) {
+      const cleanNum = params.q.trim().replace(/[^0-9]/g, '');
+      const parsedNum = cleanNum ? parseInt(cleanNum, 10) : null;
+      if (parsedNum !== null) {
+        orderBy = ` ORDER BY (CASE WHEN p.product_number = ${parsedNum} THEN 0 ELSE 1 END), p.created_at DESC `;
+      }
     }
 
     // Count total matches
@@ -529,6 +642,8 @@ export class DatabaseService {
 
   public createProduct(data: {
     name: string;
+    product_number?: number;
+    custom_code?: string;
     category_id: string;
     short_description: string;
     description: string;
@@ -541,7 +656,20 @@ export class DatabaseService {
     status: Product['status'];
   }): Product {
     const id = `prod-${crypto.randomUUID()}`;
-    const productNumber = this.getNextProductNumber();
+    const productNumber = (data.product_number !== undefined && !isNaN(Number(data.product_number)))
+      ? Number(data.product_number)
+      : this.getNextProductNumber();
+
+    // STRICT UNIQUENESS: Prevent duplicate product numbers
+    if (data.product_number !== undefined) {
+      const conflicting = this.db.prepare('SELECT id, name, product_number FROM products WHERE product_number = ? AND deleted_at IS NULL').get(productNumber) as any;
+      if (conflicting) {
+        throw new Error(`Product number #${productNumber} is already assigned to "${conflicting.name}". Each product must have a unique number.`);
+      }
+    }
+    const customCode = data.custom_code !== undefined && data.custom_code.trim()
+      ? data.custom_code.trim()
+      : `#${productNumber.toString().padStart(2, '0')}`;
     const now = new Date().toISOString();
 
     // Generate unique slug
@@ -562,12 +690,12 @@ export class DatabaseService {
 
     this.db.prepare(`
       INSERT INTO products (
-        id, product_number, slug, name, short_description, description,
+        id, product_number, custom_code, slug, name, short_description, description,
         key_points, useful_for, considerations, category_id, image_path,
         affiliate_url, marketplace_code, status, created_at, updated_at,
         published_at, deleted_at, view_count, click_count
       ) VALUES (
-        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, NULL, 0, 0
@@ -575,6 +703,7 @@ export class DatabaseService {
     `).run(
       id,
       productNumber,
+      customCode,
       slug,
       data.name,
       data.short_description,
@@ -592,7 +721,7 @@ export class DatabaseService {
       publishedAt
     );
 
-    this.addAuditLog('product.created', `Created product #${productNumber}: "${data.name}" (${data.status})`, id);
+    this.addAuditLog('product.created', `Created product #${productNumber} (${customCode}): "${data.name}" (${data.status})`, id);
     this.syncToFile();
 
     return this.getAdminProductById(id)!;
@@ -603,6 +732,25 @@ export class DatabaseService {
     if (!existing) return null;
 
     const now = new Date().toISOString();
+    const productNumber = (updates.product_number !== undefined && !isNaN(Number(updates.product_number)))
+      ? Number(updates.product_number)
+      : existing.product_number;
+
+    // If changing product number and another product already has that number, swap them seamlessly!
+    if (productNumber !== existing.product_number) {
+      const conflicting = this.db.prepare('SELECT id, product_number FROM products WHERE product_number = ? AND id != ?').get(productNumber, id) as any;
+      if (conflicting) {
+        const tempNum = -Math.floor(Date.now() % 10000000);
+        this.db.prepare('UPDATE products SET product_number = ? WHERE id = ?').run(tempNum, conflicting.id);
+        this.db.prepare('UPDATE products SET product_number = ? WHERE id = ?').run(productNumber, id);
+        this.db.prepare('UPDATE products SET product_number = ? WHERE id = ?').run(existing.product_number, conflicting.id);
+        this.addAuditLog('product.number_swapped', `Swapped product numbers: #${productNumber} and #${existing.product_number}`);
+      }
+    }
+
+    const customCode = updates.custom_code !== undefined && updates.custom_code.trim()
+      ? updates.custom_code.trim()
+      : (existing.custom_code || `#${productNumber.toString().padStart(2, '0')}`);
     const name = updates.name !== undefined ? updates.name.trim() : existing.name;
     const shortDesc = updates.short_description !== undefined ? updates.short_description.trim() : existing.short_description;
     const desc = updates.description !== undefined ? updates.description.trim() : existing.description;
@@ -623,8 +771,10 @@ export class DatabaseService {
       }
     }
 
-    this.db.prepare(`
+    const stmt = this.db.prepare(`
       UPDATE products SET
+        product_number = ?,
+        custom_code = ?,
         name = ?,
         short_description = ?,
         description = ?,
@@ -639,9 +789,10 @@ export class DatabaseService {
         published_at = ?,
         updated_at = ?
       WHERE id = ?
-    `).run(name, shortDesc, desc, catId, img, affUrl, market, cons, kp, uf, status, publishedAt, now, id);
+    `);
+    (stmt as any).run(productNumber, customCode, name, shortDesc, desc, catId, img, affUrl, market, cons, kp, uf, status, publishedAt, now, id);
 
-    this.addAuditLog('product.updated', `Updated product #${existing.product_number}: "${name}"`, id);
+    this.addAuditLog('product.updated', `Updated product #${productNumber} (${customCode}): "${name}"`, id);
     this.syncToFile();
 
     return this.getAdminProductById(id);
@@ -787,6 +938,35 @@ export class DatabaseService {
       LIMIT 30
     `).all() as any[];
 
+    // Real Category breakdown with true product count and click count
+    const categoryBreakdown = this.db.prepare(`
+      SELECT c.id, c.name, c.slug, 
+             COUNT(p.id) as product_count, 
+             COALESCE(SUM(p.click_count), 0) as clicks,
+             COALESCE(SUM(p.view_count), 0) as views
+      FROM categories c
+      LEFT JOIN products p ON p.category_id = c.id AND p.deleted_at IS NULL
+      WHERE c.is_active = 1
+      GROUP BY c.id
+      ORDER BY clicks DESC, product_count DESC
+    `).all() as any[];
+
+    // Real Monthly clicks aggregation (Jan to Dec of current year)
+    const currentYear = new Date().getFullYear();
+    const monthlyRaw = this.db.prepare(`
+      SELECT CAST(strftime('%m', clicked_at) AS INTEGER) as month_num, COUNT(*) as clicks
+      FROM product_clicks
+      WHERE strftime('%Y', clicked_at) = ?
+      GROUP BY month_num
+    `).all(String(currentYear)) as any[];
+
+    const monthlyClicks = Array(12).fill(0);
+    for (const r of monthlyRaw) {
+      if (r.month_num >= 1 && r.month_num <= 12) {
+        monthlyClicks[r.month_num - 1] = r.clicks;
+      }
+    }
+
     return {
       summary: {
         total_products: summaryRow?.total_products || 0,
@@ -799,6 +979,8 @@ export class DatabaseService {
       top_products: topProducts,
       sources,
       recent_clicks: recentClicks,
+      category_breakdown: categoryBreakdown,
+      monthly_clicks: monthlyClicks,
     };
   }
 
@@ -898,8 +1080,13 @@ export class DatabaseService {
     const heroSubheadline = updates.hero_subheadline !== undefined ? updates.hero_subheadline.trim() : current.hero_subheadline;
     const announcement = updates.announcement !== undefined ? updates.announcement.trim() : current.announcement;
     const adminTheme = updates.admin_theme !== undefined ? updates.admin_theme : current.admin_theme;
-    const publicTheme = updates.public_theme !== undefined ? updates.public_theme : current.public_theme;
-    const applyToPublic = updates.apply_to_public !== undefined ? (updates.apply_to_public ? 1 : 0) : (current.apply_to_public ? 1 : 0);
+    // When admin changes theme, change everything on the public website for everyone!
+    const publicTheme = updates.public_theme !== undefined
+      ? updates.public_theme
+      : (updates.admin_theme !== undefined ? updates.admin_theme : current.public_theme);
+    const applyToPublic = updates.apply_to_public !== undefined
+      ? (updates.apply_to_public ? 1 : 0)
+      : 1;
     const now = new Date().toISOString();
 
     const stmt = this.db.prepare(`
@@ -921,7 +1108,7 @@ export class DatabaseService {
     `);
     (stmt as any).run(logoName, tagline, heroHeadline, heroSubheadline, announcement, adminTheme, publicTheme, applyToPublic, now);
 
-    this.addAuditLog('settings.updated', `Updated site settings: logo="${logoName}", admin_theme="${adminTheme}", apply_public=${applyToPublic === 1}`);
+    this.addAuditLog('settings.updated', `Updated site settings: logo="${logoName}", admin_theme="${adminTheme}", public_theme="${publicTheme}", apply_public=true`);
     this.syncToFile();
 
     return this.getSiteSettings();
@@ -967,6 +1154,7 @@ export class DatabaseService {
     return {
       id: r.id,
       product_number: r.product_number,
+      custom_code: r.custom_code || (r.product_number !== undefined ? `#${r.product_number.toString().padStart(2, '0')}` : undefined),
       slug: r.slug,
       name: r.name,
       short_description: r.short_description,

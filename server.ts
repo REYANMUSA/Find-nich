@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.PORT) || 3000;
-const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || 'findniche2026';
 const SESSION_COOKIE_NAME = 'fn_admin_session';
 
 // Setup Express application
@@ -341,6 +341,8 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
   try {
     const product = dbService.createProduct({
       name: req.body.name.trim(),
+      product_number: req.body.product_number !== undefined ? Number(req.body.product_number) : undefined,
+      custom_code: req.body.custom_code !== undefined ? String(req.body.custom_code).trim() : undefined,
       category_id: req.body.category_id,
       short_description: req.body.short_description.trim(),
       description: req.body.description ? req.body.description.trim() : '',
@@ -355,7 +357,10 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
 
     res.status(201).json({ product });
   } catch (err: any) {
-    res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to create product.' } });
+    if (err.message && err.message.includes('already assigned to')) {
+      return res.status(409).json({ error: { code: 'DUPLICATE_NUMBER', message: err.message } });
+    }
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: err.message || 'Failed to create product.' } });
   }
 });
 

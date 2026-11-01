@@ -7,8 +7,8 @@
     "announcement": "",
     "admin_theme": "helios",
     "public_theme": "helios",
-    "apply_to_public": false,
-    "updated_at": "2026-10-29T16:06:28.281Z"
+    "apply_to_public": true,
+    "updated_at": "2026-11-01T14:53:16.604Z"
   },
   "categories": [
     {
@@ -19,6 +19,16 @@
       "is_active": true,
       "created_at": "2026-10-01T00:00:00.000Z",
       "updated_at": "2026-10-16T19:12:16.306Z",
+      "product_count": 4
+    },
+    {
+      "id": "cat-kitchen",
+      "name": "Kitchen",
+      "slug": "kitchen",
+      "display_order": 2,
+      "is_active": true,
+      "created_at": "2026-10-01T00:00:00.000Z",
+      "updated_at": "2026-10-01T00:00:00.000Z",
       "product_count": 2
     },
     {
@@ -50,12 +60,33 @@
       "created_at": "2026-10-01T00:00:00.000Z",
       "updated_at": "2026-10-16T19:12:08.099Z",
       "product_count": 1
+    },
+    {
+      "id": "cat-desk",
+      "name": "Desk",
+      "slug": "desk",
+      "display_order": 4,
+      "is_active": true,
+      "created_at": "2026-10-01T00:00:00.000Z",
+      "updated_at": "2026-10-01T00:00:00.000Z",
+      "product_count": 0
+    },
+    {
+      "id": "cat-edc",
+      "name": "EDC",
+      "slug": "edc",
+      "display_order": 6,
+      "is_active": true,
+      "created_at": "2026-10-01T00:00:00.000Z",
+      "updated_at": "2026-10-01T00:00:00.000Z",
+      "product_count": 0
     }
   ],
   "products": [
     {
       "id": "prod-001",
       "product_number": 1,
+      "custom_code": "#12",
       "slug": "ultra-slim-magnetic-power-bank",
       "name": "Ultra-Slim Magnetic Wireless Power Bank",
       "short_description": "Pocket-thin 5,000mAh magnetic battery pack designed for daily phone carry without bulk.",
@@ -78,7 +109,7 @@
       "marketplace_code": "US",
       "status": "published",
       "created_at": "2026-10-01T10:00:00.000Z",
-      "updated_at": "2026-10-01T10:00:00.000Z",
+      "updated_at": "2026-11-01T15:20:09.971Z",
       "published_at": "2026-10-01T10:00:00.000Z",
       "deleted_at": null,
       "view_count": 142,
@@ -87,6 +118,7 @@
     {
       "id": "prod-002",
       "product_number": 2,
+      "custom_code": "#02",
       "slug": "gan-65w-dual-port-compact-charger",
       "name": "Compact 65W Dual-Port GaN Fast Charger",
       "short_description": "Gallium Nitride wall charger that replaces laptop and phone bricks with one compact unit.",
@@ -118,6 +150,7 @@
     {
       "id": "prod-003",
       "product_number": 3,
+      "custom_code": "#03",
       "slug": "matte-aluminum-monitor-light-bar",
       "name": "Matte Aluminum Monitor Light Bar with Auto-Dimming",
       "short_description": "Asymmetric desk lamp that mounts on top of your monitor, eliminating screen glare and eye fatigue.",
@@ -149,6 +182,7 @@
     {
       "id": "prod-004",
       "product_number": 4,
+      "custom_code": "#04",
       "slug": "ergonomic-wireless-vertical-mouse",
       "name": "Precision Ergonomic Wireless Vertical Mouse",
       "short_description": "Sculpted 57° handshake angle mouse engineered to relieve wrist strain and forearm tension.",
@@ -180,6 +214,7 @@
     {
       "id": "prod-005",
       "product_number": 5,
+      "custom_code": "#05",
       "slug": "magnetic-anodized-aluminum-cable-dock",
       "name": "Solid Anodized Aluminum Magnetic Cable Dock",
       "short_description": "Weighted desktop cable organizer that keeps charging cords instantly accessible.",
@@ -211,6 +246,7 @@
     {
       "id": "prod-006",
       "product_number": 6,
+      "custom_code": "#06",
       "slug": "gentle-vibration-smart-posture-sensor",
       "name": "Gentle Vibration Smart Posture Reminder",
       "short_description": "Featherweight upper-back wearable that buzzes gently when you slouch past 15 degrees.",
@@ -242,6 +278,7 @@
     {
       "id": "prod-5541f99c-0fcd-4d89-a924-248b0548412f",
       "product_number": 7,
+      "custom_code": "#07",
       "slug": "test-draft-product-item",
       "name": "Test Draft Product Item",
       "short_description": "Test draft item description",
@@ -264,6 +301,7 @@
     {
       "id": "prod-76ee3585-6875-4b9e-9d93-e370f2fcb595",
       "product_number": 8,
+      "custom_code": "#08",
       "slug": "subsequent-item",
       "name": "Subsequent Item",
       "short_description": "Subsequent item description",
@@ -282,6 +320,134 @@
       "deleted_at": "2026-10-16T19:21:41.719Z",
       "view_count": 0,
       "click_count": 0
+    },
+    {
+      "id": "prod-009",
+      "product_number": 9,
+      "custom_code": "#09",
+      "slug": "magnetic-modular-walnut-knife-spice-block",
+      "name": "Magnetic Modular Walnut Knife & Spice Block",
+      "short_description": "Solid American walnut block with concealed neodymium magnets for culinary knives and spice vials.",
+      "description": "Free up counter space while showcasing your kitchen tools. Solid American walnut treated with natural food-safe mineral oil, concealing powerful neodymium magnets that hold chef knives and culinary shears securely without dulling blade edges.",
+      "key_points": [
+        "Solid sustainably sourced American walnut with natural wood grain",
+        "Heavy stainless steel weighted base prevents tipping when pulling knives",
+        "Dual-sided magnetic surface holds up to 8 full-size kitchen knives",
+        "Hygienic open-air design eliminates bacteria build-up found in traditional wooden slots"
+      ],
+      "useful_for": [
+        "Modern open kitchens and compact food prep islands",
+        "Protecting expensive Japanese and German knife blades from friction wear",
+        "Fast, effortless visual access during rapid meal preparation"
+      ],
+      "considerations": "Not compatible with non-magnetic ceramic knives.",
+      "category_id": "cat-kitchen",
+      "image_path": "/images/magnetic_cable_dock_1791747890185.jpg",
+      "affiliate_url": "https://www.amazon.com/dp/B08L9W5KB1?tag=findniche-20",
+      "marketplace_code": "US",
+      "status": "published",
+      "created_at": "2026-10-09T11:00:00.000Z",
+      "updated_at": "2026-10-09T11:00:00.000Z",
+      "published_at": "2026-10-09T11:00:00.000Z",
+      "deleted_at": null,
+      "view_count": 185,
+      "click_count": 37
+    },
+    {
+      "id": "prod-010",
+      "product_number": 10,
+      "custom_code": "#10",
+      "slug": "minimalist-cast-iron-heat-diffuser-trivet",
+      "name": "Minimalist Cast Iron Heat Diffuser & Trivet",
+      "short_description": "Architectural matte black cast iron resting plate for simmering pots and hot coffee carafes.",
+      "description": "Precision cast iron disc engineered with raised geometric channels. Functions as a stove heat diffuser to prevent scorching delicate sauces, and as a handsome tabletop trivet to protect wood surfaces from scalding hot pans and kettles.",
+      "key_points": [
+        "Heavyweight cast iron provides exceptional thermal mass and slow heat dispersion",
+        "Protects kitchen tables and countertops from heat damage up to 500°F",
+        "Subtle silicone feet on underside eliminate scratches on fine dining tables",
+        "Matte pre-seasoned black finish develops deeper patina with age"
+      ],
+      "useful_for": [
+        "Simmering stews and sauces on gas or electric stoves without hot spots",
+        "Protecting butcher block and stone countertops from scorching",
+        "Serving hot dishes directly at the dining table with industrial elegance"
+      ],
+      "considerations": "Allow cast iron plate to cool completely before washing.",
+      "category_id": "cat-kitchen",
+      "image_path": "/images/magsafe_power_bank_1791747842268.jpg",
+      "affiliate_url": "https://www.amazon.com/dp/B09C1TRVT1?tag=findniche-20",
+      "marketplace_code": "US",
+      "status": "published",
+      "created_at": "2026-10-10T14:15:00.000Z",
+      "updated_at": "2026-10-10T14:15:00.000Z",
+      "published_at": "2026-10-10T14:15:00.000Z",
+      "deleted_at": null,
+      "view_count": 160,
+      "click_count": 22
+    },
+    {
+      "id": "prod-011",
+      "product_number": 11,
+      "custom_code": "#11",
+      "slug": "solid-walnut-dual-monitor-riser-desk-shelf",
+      "name": "Solid Walnut Dual Monitor Riser & Desk Shelf",
+      "short_description": "Elevated solid timber shelf with cork-padded aluminum risers for dual screens and keyboard stowage.",
+      "description": "Crafted from solid kiln-dried walnut, this desk shelf elevates displays to ergonomic eye height while creating an entire secondary tier for your notebook, wireless keyboard, audio interface, and stationery.",
+      "key_points": [
+        "Supports up to 100 lbs across dual 27-inch monitors or heavy ultrawide displays",
+        "Anodized aluminum risers with 100% natural cork dampening feet",
+        "Under-shelf clearance of 3.8 inches accommodates mechanical keyboards and docks",
+        "Hand-finished with plant-based hardwax oil for a silky tactile surface"
+      ],
+      "useful_for": [
+        "Eliminating neck strain by lifting monitor viewports to natural eye level",
+        "Doubling usable surface space on 48–60 inch desktop setups",
+        "Hiding cables, hubs, and loose accessories out of view"
+      ],
+      "considerations": "46-inch length requires a desktop at least 48 inches wide.",
+      "category_id": "cat-home",
+      "image_path": "/images/desk_screenbar_light_1791747866894.jpg",
+      "affiliate_url": "https://www.amazon.com/dp/B08QWLNTDSK?tag=findniche-20",
+      "marketplace_code": "US",
+      "status": "published",
+      "created_at": "2026-10-11T16:00:00.000Z",
+      "updated_at": "2026-10-11T16:00:00.000Z",
+      "published_at": "2026-10-11T16:00:00.000Z",
+      "deleted_at": null,
+      "view_count": 310,
+      "click_count": 55
+    },
+    {
+      "id": "prod-012",
+      "product_number": 12,
+      "custom_code": "#12",
+      "slug": "acoustic-felt-desk-privacy-screen-organizer",
+      "name": "Acoustic Felt Desk Privacy Screen & Organizer",
+      "short_description": "Sound-dampening recycled PET felt partition with pinboard texture and magnetic cable routing.",
+      "description": "A handsome workspace partition crafted from dense acoustic felt. Absorbs ambient room reverberation for clearer remote meetings while acting as an infinite pinboard for sketches, sticky notes, and cable clips.",
+      "key_points": [
+        "Dense recycled PET acoustic felt absorbs up to 45% of vocal mid-frequencies",
+        "Non-damaging universal C-clamp installs on desk edges without drilling",
+        "Tackable surface holds enamel pins, index cards, and reminders securely",
+        "Conceals messy monitor cords and power strips from room sightlines"
+      ],
+      "useful_for": [
+        "Open-plan apartments and shared home offices needing visual separation",
+        "Improving voice clarity and acoustic dampening on Zoom and Teams calls",
+        "Keeping daily project cards and sketches pinned right at eye level"
+      ],
+      "considerations": "Clamps support desk surfaces between 0.75 to 2.2 inches thick.",
+      "category_id": "cat-home",
+      "image_path": "/images/magnetic_cable_dock_1791747890185.jpg",
+      "affiliate_url": "https://www.amazon.com/dp/B09FELTPRT?tag=findniche-20",
+      "marketplace_code": "US",
+      "status": "published",
+      "created_at": "2026-10-12T10:30:00.000Z",
+      "updated_at": "2026-11-01T15:20:09.968Z",
+      "published_at": "2026-10-12T10:30:00.000Z",
+      "deleted_at": null,
+      "view_count": 198,
+      "click_count": 29
     }
   ]
 }

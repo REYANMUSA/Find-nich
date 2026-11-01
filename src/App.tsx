@@ -6,7 +6,6 @@ import { HomePage } from './pages/HomePage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { SearchPage } from './pages/SearchPage';
-import { SavedPage } from './pages/SavedPage';
 import { AboutPage } from './pages/AboutPage';
 import { AffiliateDisclosurePage } from './pages/AffiliateDisclosurePage';
 import { PrivacyPage } from './pages/PrivacyPage';
@@ -21,7 +20,7 @@ import { AdminBrandingPage } from './pages/admin/AdminBrandingPage';
 import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
 import { isAuthenticated, adminCheckSession } from './lib/api';
-import { useSiteSettings } from './lib/settingsStore';
+import { useSiteSettings, refreshSettingsFromServer } from './lib/settingsStore';
 import { getTheme } from './lib/themes';
 
 export default function App() {
@@ -126,16 +125,18 @@ export default function App() {
 
   const handleLoginSuccess = () => {
     setIsAdminAuthed(true);
+    refreshSettingsFromServer();
     navigate('/admin');
   };
 
   const handleLogout = () => {
     setIsAdminAuthed(false);
+    refreshSettingsFromServer();
     navigate('/');
   };
 
-  // Active theme calculation
-  const publicTheme = getTheme(settings.apply_to_public ? settings.public_theme : 'titanium');
+  // Active theme calculation - synchronizes with admin choice for all visitors
+  const publicTheme = getTheme(settings.public_theme || settings.admin_theme || 'helios');
 
   // Render Router
   const renderContent = () => {
@@ -239,12 +240,8 @@ export default function App() {
     }
 
     if (currentPath === '/saved') {
-      return (
-        <SavedPage
-          onViewProduct={(slug) => navigate(`/product/${slug}`)}
-          onNavigateHome={() => navigate('/')}
-        />
-      );
+      navigate('/', true);
+      return null;
     }
 
     if (currentPath.startsWith('/product/')) {
@@ -289,10 +286,8 @@ export default function App() {
       className={`min-h-screen flex flex-col ${
         isAdminView
           ? 'bg-[#0B0D14]'
-          : settings.apply_to_public
-          ? publicTheme.classes.bgApp
-          : 'bg-white text-zinc-900'
-      } selection:bg-violet-600 selection:text-white transition-colors duration-300`}
+          : publicTheme.classes.bgApp
+      } text-zinc-100 selection:bg-violet-600 selection:text-white transition-colors duration-300`}
     >
       {/* Announcement Banner if configured */}
       {!isAdminView && settings.announcement && (
