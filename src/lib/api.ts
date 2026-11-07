@@ -1,4 +1,5 @@
 import type { Product, Category, ProductClick, AuditLog, SiteSettings } from '../types/index.ts';
+import posthog from 'posthog-js';
 
 // Storage key for client-side cached categories for offline speed
 const STORAGE_CATEGORIES_KEY = 'fn_cached_categories';
@@ -108,7 +109,16 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
     const res = await fetch(`/api/products/${encodeURIComponent(slug)}`);
     if (res.ok) {
       const data = await res.json();
-      return data.product;
+      const product = data.product;
+      posthog.capture('product_viewed', {
+        product_id: product.id,
+        product_number: product.product_number,
+        product_name: product.name,
+        category_id: product.category_id,
+        marketplace_code: product.marketplace_code,
+        slug,
+      });
+      return product;
     }
   } catch {
     // Network error
@@ -121,6 +131,7 @@ export async function trackOutboundClick(
   productId: string,
   source: 'catalog_card' | 'product_detail' | 'related_products' | 'direct' = 'catalog_card'
 ): Promise<void> {
+  posthog.capture('affiliate_link_clicked', { product_id: productId, source });
   try {
     await fetch('/api/clicks', {
       method: 'POST',
