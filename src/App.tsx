@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import posthog from 'posthog-js';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { BottomTabBar } from './components/BottomTabBar';
@@ -55,6 +56,13 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  // Capture public route views only; keep owner-only admin activity out of visitor analytics.
+  useEffect(() => {
+    if (!currentPath.startsWith('/admin')) {
+      posthog.capture('$pageview', { $current_url: window.location.href });
+    }
+  }, [currentPath]);
 
   // Sync internal state when path changes
   useEffect(() => {
