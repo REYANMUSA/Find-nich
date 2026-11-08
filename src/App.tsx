@@ -293,9 +293,9 @@ export default function App() {
     <div
       className={`min-h-screen flex flex-col ${
         isAdminView
-          ? 'bg-[#0B0D14]'
+          ? 'bg-[#0B0D14] text-zinc-100'
           : publicTheme.classes.bgApp
-      } text-zinc-100 selection:bg-violet-600 selection:text-white transition-colors duration-300`}
+      } selection:bg-violet-600 selection:text-white transition-colors duration-300`}
     >
       {/* Announcement Banner if configured */}
       {!isAdminView && settings.announcement && (

@@ -216,7 +216,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
             }}
             placeholder="Search item numbers (e.g. #07#00, #01, #12) or keywords..."
             autoFocus={!initialQuery}
-            className={`w-full h-12 pl-11 pr-11 text-sm bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl ${theme.classes.textPrimary} placeholder:text-zinc-500 focus:outline-none focus:ring-1 shadow-md transition-colors`}
+            className={`w-full h-12 pl-11 pr-11 text-sm ${theme.classes.inputBg} ${theme.classes.inputBorder} rounded-2xl ${theme.classes.textPrimary} placeholder:text-zinc-500 focus:outline-none focus:ring-1 shadow-md transition-colors`}
             style={{ borderColor: query ? theme.swatch.accent : undefined }}
           />
           {query && (
@@ -225,7 +225,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                 setQuery('');
                 setShowSuggestions(false);
               }}
-              className="absolute right-3.5 top-3.5 p-1 text-zinc-400 hover:text-white"
+              className={`absolute right-3.5 top-3.5 p-1 ${theme.classes.textMuted} hover:${theme.classes.textPrimary}`}
               aria-label="Clear search"
             >
               <X className="w-4 h-4" />
@@ -235,12 +235,16 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
         {/* Live Auto-Suggestions Dropdown */}
         {showSuggestions && liveSuggestions.length > 0 && (
-          <div className="absolute top-14 left-0 right-0 z-30 bg-[#0E121D]/95 border border-white/15 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden divide-y divide-white/[0.06] animate-in fade-in slide-in-from-top-2 duration-150">
-            <div className="p-2 text-[10px] uppercase font-bold text-zinc-400 px-3 flex items-center justify-between">
+          <div className={`absolute top-14 left-0 right-0 z-30 ${
+            theme.isDark ? 'bg-[#0E121D]/95 border-white/15' : 'bg-white border-zinc-200'
+          } border backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden divide-y ${
+            theme.isDark ? 'divide-white/[0.06]' : 'divide-zinc-100'
+          } animate-in fade-in slide-in-from-top-2 duration-150`}>
+            <div className={`p-2 text-[10px] uppercase font-bold ${theme.classes.textMuted} px-3 flex items-center justify-between`}>
               <span>Suggestions</span>
               <button
                 onClick={() => setShowSuggestions(false)}
-                className="text-zinc-400 hover:text-white"
+                className={`${theme.classes.textMuted} hover:${theme.classes.textPrimary}`}
               >
                 Close
               </button>

@@ -96,7 +96,9 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
               className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border backdrop-blur-xl transition-all duration-200 text-center ${
                 isAllSelected
                   ? 'text-white scale-[1.02]'
-                  : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 text-zinc-300 hover:text-white'
+                  : theme.isDark
+                    ? 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 text-zinc-300 hover:text-white'
+                    : 'bg-zinc-100 border-zinc-200 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-950'
               }`}
               style={isAllSelected ? {
                 backgroundColor: theme.swatch.accent + '25',
@@ -111,8 +113,8 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
                   backgroundColor: theme.swatch.accent,
                   color: '#ffffff',
                 } : {
-                  backgroundColor: 'rgba(255,255,255,0.06)',
-                  color: '#a1a1aa',
+                  backgroundColor: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                  color: theme.isDark ? '#a1a1aa' : '#52525b',
                 }}
               >
                 <LayoutGrid className="w-5 h-5" />
@@ -133,7 +135,9 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
               className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border backdrop-blur-xl transition-all duration-200 text-center ${
                 isSelected
                   ? 'text-white scale-[1.02]'
-                  : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 text-zinc-300 hover:text-white'
+                  : theme.isDark
+                    ? 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 text-zinc-300 hover:text-white'
+                    : 'bg-zinc-100 border-zinc-200 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-950'
               }`}
               style={isSelected ? {
                 backgroundColor: theme.swatch.accent + '25',

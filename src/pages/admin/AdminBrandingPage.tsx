@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, Check, Globe, RefreshCw, Palette, Save, Type, Eye, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useSiteSettings } from '../../lib/settingsStore';
+import { useSiteSettings, updateCachedSettings } from '../../lib/settingsStore';
 import { THEME_LIST, getTheme } from '../../lib/themes';
 import { ThemeId } from '../../types/index.ts';
 import { adminUpdateSiteSettings } from '../../lib/api';
@@ -30,6 +30,32 @@ export const AdminBrandingPage: React.FC = () => {
 
   const currentTheme = getTheme(selectedAdminTheme);
 
+  // Helper to normalize usernames and partial URLs into full valid URLs
+  const normalizeSocialUrl = (platform: 'instagram' | 'tiktok' | 'youtube' | 'x' | 'snapchat' | 'facebook', val: string): string => {
+    const trimmed = val.trim();
+    if (!trimmed) return '';
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    const clean = trimmed.replace(/^@+/, '').trim();
+    switch (platform) {
+      case 'instagram':
+        return `https://www.instagram.com/${clean.replace(/^(www\.)?instagram\.com\//i, '')}`;
+      case 'tiktok':
+        return `https://www.tiktok.com/@${clean.replace(/^(www\.)?tiktok\.com\/@?/i, '')}`;
+      case 'youtube': {
+        const ytClean = clean.replace(/^(www\.)?youtube\.com\//i, '');
+        return `https://www.youtube.com/${ytClean.startsWith('@') ? ytClean : '@' + ytClean}`;
+      }
+      case 'x':
+        return `https://x.com/${clean.replace(/^(www\.)?(twitter|x)\.com\//i, '')}`;
+      case 'snapchat':
+        return `https://www.snapchat.com/add/${clean.replace(/^(www\.)?snapchat\.com\/add\//i, '')}`;
+      case 'facebook':
+        return `https://www.facebook.com/${clean.replace(/^(www\.)?facebook\.com\//i, '')}`;
+      default:
+        return trimmed;
+    }
+  };
+
   const handleSelectThemeOneTouch = (themeId: ThemeId) => {
     setSelectedAdminTheme(themeId);
     setSelectedPublicTheme(themeId);
@@ -50,6 +76,21 @@ export const AdminBrandingPage: React.FC = () => {
     setSaving(true);
     setMessage(null);
 
+    // Normalize all social inputs before saving
+    const normalizedInstagram = normalizeSocialUrl('instagram', instagramInput);
+    const normalizedTiktok = normalizeSocialUrl('tiktok', tiktokInput);
+    const normalizedYoutube = normalizeSocialUrl('youtube', youtubeInput);
+    const normalizedX = normalizeSocialUrl('x', xInput);
+    const normalizedSnapchat = normalizeSocialUrl('snapchat', snapchatInput);
+    const normalizedFacebook = normalizeSocialUrl('facebook', facebookInput);
+
+    setInstagramInput(normalizedInstagram);
+    setTiktokInput(normalizedTiktok);
+    setYoutubeInput(normalizedYoutube);
+    setXInput(normalizedX);
+    setSnapchatInput(normalizedSnapchat);
+    setFacebookInput(normalizedFacebook);
+
     try {
       const payload = {
         logo_name: logoNameInput.trim() || 'Find Niche',
@@ -58,12 +99,12 @@ export const AdminBrandingPage: React.FC = () => {
         hero_subheadline: heroSubheadlineInput.trim(),
         announcement: announcementInput.trim(),
         owner_name: ownerNameInput.trim() || 'Rayan Musa',
-        social_tiktok: tiktokInput.trim(),
-        social_youtube: youtubeInput.trim(),
-        social_instagram: instagramInput.trim(),
-        social_x: xInput.trim(),
-        social_snapchat: snapchatInput.trim(),
-        social_facebook: facebookInput.trim(),
+        social_tiktok: normalizedTiktok,
+        social_youtube: normalizedYoutube,
+        social_instagram: normalizedInstagram,
+        social_x: normalizedX,
+        social_snapchat: normalizedSnapchat,
+        social_facebook: normalizedFacebook,
         admin_theme: selectedAdminTheme,
         public_theme: applyToPublicStore ? selectedAdminTheme : selectedPublicTheme,
         apply_to_public: applyToPublicStore,
@@ -71,7 +112,9 @@ export const AdminBrandingPage: React.FC = () => {
 
       const updated = await adminUpdateSiteSettings(payload);
 
-      // Synchronize client store immediately
+      // Synchronize client store immediately with all updated fields
+      updateCachedSettings(updated);
+
       setLogoName(updated.logo_name);
       setTagline(updated.tagline);
       setAdminTheme(updated.admin_theme);
@@ -338,13 +381,14 @@ export const AdminBrandingPage: React.FC = () => {
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
               <span className="text-[#ff0050] font-bold">TikTok</span>
-              <span className="text-[11px] text-zinc-500">(Profile URL)</span>
+              <span className="text-[11px] text-zinc-500">(Username or URL)</span>
             </label>
             <input
-              type="url"
+              type="text"
               value={tiktokInput}
               onChange={(e) => setTiktokInput(e.target.value)}
-              placeholder="https://www.tiktok.com/@youraccount"
+              onBlur={() => setTiktokInput((prev) => normalizeSocialUrl('tiktok', prev))}
+              placeholder="e.g. @youraccount or tiktok.com/@youraccount"
               className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
             />
           </div>
@@ -353,13 +397,14 @@ export const AdminBrandingPage: React.FC = () => {
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
               <span className="text-[#ff0000] font-bold">YouTube</span>
-              <span className="text-[11px] text-zinc-500">(Channel or Shorts URL)</span>
+              <span className="text-[11px] text-zinc-500">(Handle or URL)</span>
             </label>
             <input
-              type="url"
+              type="text"
               value={youtubeInput}
               onChange={(e) => setYoutubeInput(e.target.value)}
-              placeholder="https://www.youtube.com/@yourchannel"
+              onBlur={() => setYoutubeInput((prev) => normalizeSocialUrl('youtube', prev))}
+              placeholder="e.g. @yourchannel or youtube.com/@yourchannel"
               className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
             />
           </div>
@@ -368,13 +413,14 @@ export const AdminBrandingPage: React.FC = () => {
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
               <span className="text-[#e4405f] font-bold">Instagram</span>
-              <span className="text-[11px] text-zinc-500">(Profile URL)</span>
+              <span className="text-[11px] text-zinc-500">(Username or URL)</span>
             </label>
             <input
-              type="url"
+              type="text"
               value={instagramInput}
               onChange={(e) => setInstagramInput(e.target.value)}
-              placeholder="https://www.instagram.com/yourhandle"
+              onBlur={() => setInstagramInput((prev) => normalizeSocialUrl('instagram', prev))}
+              placeholder="e.g. uiux.subash or @uiux.subash or instagram.com/uiux.subash"
               className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
             />
           </div>
@@ -383,13 +429,14 @@ export const AdminBrandingPage: React.FC = () => {
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
               <span className="text-white font-bold">X (Twitter)</span>
-              <span className="text-[11px] text-zinc-500">(Profile URL)</span>
+              <span className="text-[11px] text-zinc-500">(Handle or URL)</span>
             </label>
             <input
-              type="url"
+              type="text"
               value={xInput}
               onChange={(e) => setXInput(e.target.value)}
-              placeholder="https://x.com/yourhandle"
+              onBlur={() => setXInput((prev) => normalizeSocialUrl('x', prev))}
+              placeholder="e.g. @yourhandle or x.com/yourhandle"
               className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
             />
           </div>
@@ -398,13 +445,14 @@ export const AdminBrandingPage: React.FC = () => {
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
               <span className="text-[#fffc00] font-bold">Snapchat</span>
-              <span className="text-[11px] text-zinc-500">(Profile URL)</span>
+              <span className="text-[11px] text-zinc-500">(Username or URL)</span>
             </label>
             <input
-              type="url"
+              type="text"
               value={snapchatInput}
               onChange={(e) => setSnapchatInput(e.target.value)}
-              placeholder="https://www.snapchat.com/add/yourname"
+              onBlur={() => setSnapchatInput((prev) => normalizeSocialUrl('snapchat', prev))}
+              placeholder="e.g. username or snapchat.com/add/username"
               className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
             />
           </div>
@@ -413,13 +461,14 @@ export const AdminBrandingPage: React.FC = () => {
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
               <span className="text-[#1877f2] font-bold">Facebook</span>
-              <span className="text-[11px] text-zinc-500">(Page or Profile URL)</span>
+              <span className="text-[11px] text-zinc-500">(Page or URL)</span>
             </label>
             <input
-              type="url"
+              type="text"
               value={facebookInput}
               onChange={(e) => setFacebookInput(e.target.value)}
-              placeholder="https://www.facebook.com/yourpage"
+              onBlur={() => setFacebookInput((prev) => normalizeSocialUrl('facebook', prev))}
+              placeholder="e.g. page.name or facebook.com/pagename"
               className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
             />
           </div>

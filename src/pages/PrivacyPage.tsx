@@ -16,7 +16,11 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
       <div>
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-white transition-colors py-1.5 px-3 rounded-lg bg-white/[0.04] border border-white/10"
+          className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
+            theme.isDark
+              ? 'text-zinc-400 hover:text-white bg-white/[0.04] border-white/10'
+              : 'text-zinc-600 hover:text-zinc-950 bg-zinc-100 border-zinc-200'
+          } transition-colors py-1.5 px-3 rounded-lg border`}
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to catalog</span>

@@ -90,7 +90,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const activeSocials = socialLinks.filter((s) => s.url && s.url.trim().length > 0);
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0B0D14]/85 backdrop-blur-xl border-b border-white/[0.08] transition-colors duration-300 shadow-md">
+    <header
+      className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 shadow-sm ${
+        theme.isDark
+          ? 'bg-[#0B0D14]/90 border-white/[0.08]'
+          : 'bg-white/95 border-zinc-200/80 shadow-xs'
+      }`}
+    >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-4">
         {/* Logo with 5-tap Secret Admin Trigger */}
         <Logo
@@ -99,35 +105,43 @@ export const Navbar: React.FC<NavbarProps> = ({
         />
 
         {/* Center Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-zinc-400">
+        <nav className={`hidden md:flex items-center gap-6 text-xs font-semibold ${theme.classes.textMuted}`}>
           <button
             onClick={() => onNavigate('/')}
-            className={`transition-colors hover:text-white ${
-              currentPath === '/' || currentPath === '' ? 'text-white font-bold' : ''
+            className={`transition-colors ${
+              currentPath === '/' || currentPath === ''
+                ? `${theme.classes.textPrimary} font-bold`
+                : `${theme.classes.textMuted} hover:${theme.classes.textPrimary}`
             }`}
           >
             Home
           </button>
           <button
             onClick={() => onNavigate('/categories')}
-            className={`transition-colors hover:text-white ${
-              currentPath.startsWith('/categories') ? 'text-white font-bold' : ''
+            className={`transition-colors ${
+              currentPath.startsWith('/categories')
+                ? `${theme.classes.textPrimary} font-bold`
+                : `${theme.classes.textMuted} hover:${theme.classes.textPrimary}`
             }`}
           >
             Categories
           </button>
           <button
             onClick={() => onNavigate('/about')}
-            className={`transition-colors hover:text-white ${
-              currentPath === '/about' ? 'text-white font-bold' : ''
+            className={`transition-colors ${
+              currentPath === '/about'
+                ? `${theme.classes.textPrimary} font-bold`
+                : `${theme.classes.textMuted} hover:${theme.classes.textPrimary}`
             }`}
           >
             About
           </button>
           <button
             onClick={() => onNavigate('/affiliate-disclosure')}
-            className={`transition-colors hover:text-white ${
-              currentPath === '/affiliate-disclosure' ? 'text-white font-bold' : ''
+            className={`transition-colors ${
+              currentPath === '/affiliate-disclosure'
+                ? `${theme.classes.textPrimary} font-bold`
+                : `${theme.classes.textMuted} hover:${theme.classes.textPrimary}`
             }`}
           >
             Disclosure
@@ -138,14 +152,18 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-2">
           {/* Social Media Account Logos */}
           {activeSocials.length > 0 && (
-            <div className="flex items-center gap-1 sm:gap-1.5 pr-1 border-r border-white/10">
+            <div className={`flex items-center gap-1.5 pr-2 border-r ${theme.isDark ? 'border-white/10' : 'border-zinc-200'}`}>
               {activeSocials.map((social) => (
                 <a
                   key={social.id}
                   href={social.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`w-8 h-8 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-zinc-400 ${social.hoverColor} hover:bg-white/[0.08] hover:border-white/20 transition-all active:scale-90`}
+                  className={`min-w-[36px] min-h-[36px] w-9 h-9 rounded-xl border flex items-center justify-center transition-all duration-200 active:scale-90 shadow-2xs ${
+                    theme.isDark
+                      ? `bg-white/[0.06] border-white/10 text-zinc-300 ${social.hoverColor} hover:bg-white/[0.12] hover:border-white/25 hover:text-white`
+                      : `bg-zinc-100 border-zinc-200 text-zinc-700 ${social.hoverColor} hover:bg-zinc-200 hover:border-zinc-300`
+                  }`}
                   title={`Follow on ${social.name}`}
                   aria-label={social.name}
                 >
@@ -158,10 +176,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Search Button */}
           <button
             onClick={() => onNavigate('/search')}
-            className={`h-9 px-3 sm:px-3.5 flex items-center gap-2 rounded-xl text-xs font-semibold border backdrop-blur-md transition-all ${
+            className={`min-h-[36px] h-9 px-3.5 flex items-center gap-2 rounded-xl text-xs font-semibold border backdrop-blur-md transition-all active:scale-95 ${
               currentPath === '/search'
-                ? 'bg-violet-600/20 border-violet-500/50 text-white shadow-sm'
-                : 'bg-white/5 border-white/10 text-zinc-300 hover:text-white hover:bg-white/10 hover:border-white/20'
+                ? `${theme.classes.accentSubtleBg} ${theme.classes.textPrimary} shadow-xs font-bold`
+                : theme.isDark
+                  ? 'bg-white/5 border-white/10 text-zinc-300 hover:text-white hover:bg-white/10 hover:border-white/20'
+                  : 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-zinc-950 hover:bg-zinc-200'
             }`}
             title="Search Catalog"
             aria-label="Search"

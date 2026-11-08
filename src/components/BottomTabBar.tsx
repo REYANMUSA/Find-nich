@@ -90,7 +90,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentPath, onNavig
               className={`flex items-center gap-2 rounded-full transition-all duration-300 ${
                 isActive
                   ? `${theme.classes.accentPillActive} px-4 py-2 text-xs font-bold shadow-md scale-102`
-                  : `p-2.5 ${theme.classes.textMuted} hover:text-white active:scale-95`
+                  : `p-2.5 ${theme.classes.textMuted} ${theme.isDark ? 'hover:text-white' : 'hover:text-zinc-950'} active:scale-95`
               }`}
               title={tab.label}
               aria-current={isActive ? 'page' : undefined}

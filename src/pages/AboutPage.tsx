@@ -16,7 +16,11 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
       <div>
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-white transition-colors py-1.5 px-3 rounded-lg bg-white/[0.04] border border-white/10"
+          className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
+            theme.isDark
+              ? 'text-zinc-400 hover:text-white bg-white/[0.04] border-white/10'
+              : 'text-zinc-600 hover:text-zinc-950 bg-zinc-100 border-zinc-200'
+          } transition-colors py-1.5 px-3 rounded-lg border`}
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to catalog</span>
@@ -72,10 +76,10 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
         </h2>
         <div className={`space-y-3 text-sm ${theme.classes.textSecondary} leading-relaxed font-normal`}>
           <p>
-            When you see an item you like on {settings.logo_name || 'Find Niche'}, clicking the <strong className="text-white">“Check price on Amazon”</strong> button routes you straight to the corresponding product listing on Amazon.
+            When you see an item you like on {settings.logo_name || 'Find Niche'}, clicking the <strong className={`font-bold ${theme.classes.textPrimary}`}>“Check price on Amazon”</strong> button routes you straight to the corresponding product listing on Amazon.
           </p>
           <p>
-            If you decide to make a purchase, Amazon pays us a modest affiliate commission. This commission comes at <strong className="text-white">zero extra cost</strong> to you. The price you pay on Amazon is identical whether you used our link or navigated there independently.
+            If you decide to make a purchase, Amazon pays us a modest affiliate commission. This commission comes at <strong className={`font-bold ${theme.classes.textPrimary}`}>zero extra cost</strong> to you. The price you pay on Amazon is identical whether you used our link or navigated there independently.
           </p>
           <p>
             {settings.logo_name || 'Find Niche'} does not store your payment information, process orders, or collect personal browsing logs.
@@ -89,7 +93,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
           Why We Use Product Item Numbers (#07#00, #01, #02...)
         </h3>
         <p className={`text-xs ${theme.classes.textSecondary} leading-relaxed`}>
-          In our video demonstrations on TikTok, YouTube Shorts, and Instagram, we reference short item numbers (e.g. <em className="text-white">"Check Item #07 on Find Niche"</em>). You can type that number directly into the search bar at any time to land on the exact product without scrolling.
+          In our video demonstrations on TikTok, YouTube Shorts, and Instagram, we reference short item numbers (e.g. <em className={`font-semibold ${theme.classes.textPrimary}`}>"Check Item #07 on Find Niche"</em>). You can type that number directly into the search bar at any time to land on the exact product without scrolling.
         </p>
       </div>
     </div>
