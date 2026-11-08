@@ -480,20 +480,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <Settings className="w-3.5 h-3.5" />
             </button>
 
-            {/* Admin Avatar Badge matching screenshot */}
+            {/* Admin Avatar Badge - Rayan Musa */}
             <div className="flex items-center gap-2 pl-2 border-l border-white/10">
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shrink-0"
                 style={{ backgroundColor: currentTheme.swatch.accent }}
               >
-                AD
+                RM
               </div>
               <div className="text-left hidden xl:block">
                 <span className="text-xs font-bold text-white block leading-none">
-                  Store Owner
+                  {settings.owner_name || 'Rayan Musa'}
                 </span>
                 <span className="text-[10px] text-zinc-400 leading-none">
-                  admin@findniche.io
+                  nusis man
                 </span>
               </div>
             </div>

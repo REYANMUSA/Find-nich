@@ -12,6 +12,13 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   admin_theme: 'helios',
   public_theme: 'helios',
   apply_to_public: true,
+  owner_name: 'Rayan Musa',
+  social_instagram: '',
+  social_tiktok: '',
+  social_youtube: '',
+  social_x: '',
+  social_snapchat: '',
+  social_facebook: '',
 };
 
 let cachedSettings: SiteSettings = (() => {

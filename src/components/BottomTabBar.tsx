@@ -11,6 +11,48 @@ interface BottomTabBarProps {
 export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentPath, onNavigate }) => {
   const { settings } = useSiteSettings();
   const theme = getTheme(settings.public_theme || 'helios');
+  const [isKeyboardOpen, setIsKeyboardOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+        setIsKeyboardOpen(true);
+      }
+    };
+    const handleFocusOut = () => {
+      setTimeout(() => {
+        const active = document.activeElement as HTMLElement | null;
+        if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA')) {
+          setIsKeyboardOpen(false);
+        }
+      }, 100);
+    };
+
+    const handleResize = () => {
+      if (window.visualViewport) {
+        const heightDiff = window.innerHeight - window.visualViewport.height;
+        if (heightDiff > 120) {
+          setIsKeyboardOpen(true);
+        } else if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+          setIsKeyboardOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('focusin', handleFocusIn);
+    window.addEventListener('focusout', handleFocusOut);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+    }
+    return () => {
+      window.removeEventListener('focusin', handleFocusIn);
+      window.removeEventListener('focusout', handleFocusOut);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+      }
+    };
+  }, []);
 
   const tabs = [
     { id: '/', label: 'Home', icon: Home },
@@ -20,7 +62,11 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentPath, onNavig
   ];
 
   return (
-    <aside className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 md:hidden pointer-events-none select-none">
+    <aside
+      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-40 md:hidden select-none transition-all duration-300 ${
+        isKeyboardOpen ? 'opacity-0 translate-y-16 pointer-events-none' : 'opacity-100 translate-y-0'
+      }`}
+    >
       {/* Floating Capsule Dock Inspired by Screenshot 2 */}
       <nav
         aria-label="Mobile Navigation"

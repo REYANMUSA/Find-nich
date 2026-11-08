@@ -136,6 +136,24 @@ export class DatabaseService {
       // Column already exists
     }
 
+    // Ensure owner_name and social media columns exist on site_settings table
+    const settingsColumns = [
+      'owner_name TEXT DEFAULT "Rayan Musa"',
+      'social_instagram TEXT DEFAULT ""',
+      'social_tiktok TEXT DEFAULT ""',
+      'social_youtube TEXT DEFAULT ""',
+      'social_x TEXT DEFAULT ""',
+      'social_snapchat TEXT DEFAULT ""',
+      'social_facebook TEXT DEFAULT ""',
+    ];
+    for (const col of settingsColumns) {
+      try {
+        this.db.exec(`ALTER TABLE site_settings ADD COLUMN ${col};`);
+      } catch {
+        // Column already exists
+      }
+    }
+
     // Ensure default settings row exists and apply_to_public is enabled
     const settingsRow = this.db.prepare("SELECT id FROM site_settings WHERE id = 'default'").get() as any;
     if (!settingsRow) {
@@ -1056,7 +1074,14 @@ export class DatabaseService {
         announcement: '',
         admin_theme: 'helios',
         public_theme: 'helios',
-        apply_to_public: false,
+        apply_to_public: true,
+        owner_name: 'Rayan Musa',
+        social_instagram: '',
+        social_tiktok: '',
+        social_youtube: '',
+        social_x: '',
+        social_snapchat: '',
+        social_facebook: '',
       };
     }
     return {
@@ -1068,6 +1093,13 @@ export class DatabaseService {
       admin_theme: (row.admin_theme as ThemeId) || 'helios',
       public_theme: (row.public_theme as ThemeId) || 'helios',
       apply_to_public: Boolean(row.apply_to_public),
+      owner_name: row.owner_name || 'Rayan Musa',
+      social_instagram: row.social_instagram || '',
+      social_tiktok: row.social_tiktok || '',
+      social_youtube: row.social_youtube || '',
+      social_x: row.social_x || '',
+      social_snapchat: row.social_snapchat || '',
+      social_facebook: row.social_facebook || '',
       updated_at: row.updated_at,
     };
   }
@@ -1080,21 +1112,29 @@ export class DatabaseService {
     const heroSubheadline = updates.hero_subheadline !== undefined ? updates.hero_subheadline.trim() : current.hero_subheadline;
     const announcement = updates.announcement !== undefined ? updates.announcement.trim() : current.announcement;
     const adminTheme = updates.admin_theme !== undefined ? updates.admin_theme : current.admin_theme;
-    // When admin changes theme, change everything on the public website for everyone!
     const publicTheme = updates.public_theme !== undefined
       ? updates.public_theme
       : (updates.admin_theme !== undefined ? updates.admin_theme : current.public_theme);
     const applyToPublic = updates.apply_to_public !== undefined
       ? (updates.apply_to_public ? 1 : 0)
       : 1;
+    const ownerName = updates.owner_name !== undefined ? updates.owner_name.trim() : (current.owner_name || 'Rayan Musa');
+    const socialInstagram = updates.social_instagram !== undefined ? updates.social_instagram.trim() : (current.social_instagram || '');
+    const socialTiktok = updates.social_tiktok !== undefined ? updates.social_tiktok.trim() : (current.social_tiktok || '');
+    const socialYoutube = updates.social_youtube !== undefined ? updates.social_youtube.trim() : (current.social_youtube || '');
+    const socialX = updates.social_x !== undefined ? updates.social_x.trim() : (current.social_x || '');
+    const socialSnapchat = updates.social_snapchat !== undefined ? updates.social_snapchat.trim() : (current.social_snapchat || '');
+    const socialFacebook = updates.social_facebook !== undefined ? updates.social_facebook.trim() : (current.social_facebook || '');
     const now = new Date().toISOString();
 
     const stmt = this.db.prepare(`
       INSERT INTO site_settings (
         id, logo_name, tagline, hero_headline, hero_subheadline,
-        announcement, admin_theme, public_theme, apply_to_public, updated_at
+        announcement, admin_theme, public_theme, apply_to_public,
+        owner_name, social_instagram, social_tiktok, social_youtube,
+        social_x, social_snapchat, social_facebook, updated_at
       ) VALUES (
-        'default', ?, ?, ?, ?, ?, ?, ?, ?, ?
+        'default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       ) ON CONFLICT(id) DO UPDATE SET
         logo_name = excluded.logo_name,
         tagline = excluded.tagline,
@@ -1104,11 +1144,23 @@ export class DatabaseService {
         admin_theme = excluded.admin_theme,
         public_theme = excluded.public_theme,
         apply_to_public = excluded.apply_to_public,
+        owner_name = excluded.owner_name,
+        social_instagram = excluded.social_instagram,
+        social_tiktok = excluded.social_tiktok,
+        social_youtube = excluded.social_youtube,
+        social_x = excluded.social_x,
+        social_snapchat = excluded.social_snapchat,
+        social_facebook = excluded.social_facebook,
         updated_at = excluded.updated_at
     `);
-    (stmt as any).run(logoName, tagline, heroHeadline, heroSubheadline, announcement, adminTheme, publicTheme, applyToPublic, now);
+    (stmt as any).run(
+      logoName, tagline, heroHeadline, heroSubheadline, announcement,
+      adminTheme, publicTheme, applyToPublic,
+      ownerName, socialInstagram, socialTiktok, socialYoutube,
+      socialX, socialSnapchat, socialFacebook, now
+    );
 
-    this.addAuditLog('settings.updated', `Updated site settings: logo="${logoName}", admin_theme="${adminTheme}", public_theme="${publicTheme}", apply_public=true`);
+    this.addAuditLog('settings.updated', `Updated site settings: logo="${logoName}", owner="${ownerName}", admin_theme="${adminTheme}", public_theme="${publicTheme}"`);
     this.syncToFile();
 
     return this.getSiteSettings();

@@ -164,9 +164,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onViewProduct, initialQuery 
 
           {/* Category Logo Buttons Row */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-1 px-1">
-            {/* 'Home' Category Logo Button - Restored with Home icon */}
+            {/* 'All Gear' Category Logo Button - The first one has to be All Gear */}
             {(() => {
-              const isSelected = selectedCategory === 'all' || selectedCategory === 'home';
+              const isSelected = selectedCategory === 'all';
               return (
                 <button
                   onClick={() => setSelectedCategory('all')}
@@ -180,7 +180,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onViewProduct, initialQuery 
                     borderColor: theme.swatch.accent,
                     boxShadow: `0 0 20px ${theme.swatch.accent}55`,
                   } : undefined}
-                  title="Home Catalog (All Items)"
+                  title="All Gear (Entire Catalog)"
                 >
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
@@ -192,52 +192,50 @@ export const HomePage: React.FC<HomePageProps> = ({ onViewProduct, initialQuery 
                       color: '#a1a1aa',
                     }}
                   >
-                    <HomeIcon className="w-4 h-4" />
+                    <LayoutGrid className="w-4 h-4" />
                   </div>
-                  <span className="text-xs font-semibold tracking-tight">Home</span>
+                  <span className="text-xs font-bold tracking-tight">All Gear</span>
                 </button>
               );
             })()}
 
-            {/* Dynamic Category Logo Buttons (Kitchen, Tech, Desk, Phone, EDC, Body) */}
-            {categories
-              .filter((c) => c.slug !== 'home')
-              .map((cat) => {
-                const Icon = getCategoryIcon(cat.slug);
-                const isSelected = selectedCategory === cat.slug;
+            {/* Dynamic Category Logo Buttons (Home, Kitchen, Tech, Desk, Phone, EDC, Body) */}
+            {categories.map((cat) => {
+              const Icon = getCategoryIcon(cat.slug);
+              const isSelected = selectedCategory === cat.slug;
 
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.slug)}
-                    className={`group flex items-center gap-2 px-3.5 py-2.5 rounded-xl border backdrop-blur-md transition-all duration-200 shrink-0 ${
-                      isSelected
-                        ? 'text-white'
-                        : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.07] hover:border-white/20 text-zinc-300 hover:text-white'
-                    }`}
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.slug)}
+                  className={`group flex items-center gap-2 px-3.5 py-2.5 rounded-xl border backdrop-blur-md transition-all duration-200 shrink-0 ${
+                    isSelected
+                      ? 'text-white'
+                      : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.07] hover:border-white/20 text-zinc-300 hover:text-white'
+                  }`}
+                  style={isSelected ? {
+                    backgroundColor: theme.swatch.accent + '25',
+                    borderColor: theme.swatch.accent,
+                    boxShadow: `0 0 20px ${theme.swatch.accent}55`,
+                  } : undefined}
+                  title={`Filter by ${cat.name}`}
+                >
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
                     style={isSelected ? {
-                      backgroundColor: theme.swatch.accent + '25',
-                      borderColor: theme.swatch.accent,
-                      boxShadow: `0 0 20px ${theme.swatch.accent}55`,
-                    } : undefined}
-                    title={`Filter by ${cat.name}`}
+                      backgroundColor: theme.swatch.accent,
+                      color: '#ffffff',
+                    } : {
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      color: '#a1a1aa',
+                    }}
                   >
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-                      style={isSelected ? {
-                        backgroundColor: theme.swatch.accent,
-                        color: '#ffffff',
-                      } : {
-                        backgroundColor: 'rgba(255,255,255,0.06)',
-                        color: '#a1a1aa',
-                      }}
-                    >
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-semibold tracking-tight">{cat.name}</span>
-                  </button>
-                );
-              })}
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-semibold tracking-tight">{cat.name}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

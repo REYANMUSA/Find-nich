@@ -87,26 +87,27 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
 
       {/* Category Logo Buttons Grid / Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        {/* First Button: All Gear */}
         {(() => {
-          const isHomeSelected = selectedCatId === 'all' || selectedCatId === 'home';
+          const isAllSelected = selectedCatId === 'all';
           return (
             <button
               onClick={() => setSelectedCatId('all')}
               className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border backdrop-blur-xl transition-all duration-200 text-center ${
-                isHomeSelected
+                isAllSelected
                   ? 'text-white scale-[1.02]'
                   : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 text-zinc-300 hover:text-white'
               }`}
-              style={isHomeSelected ? {
+              style={isAllSelected ? {
                 backgroundColor: theme.swatch.accent + '25',
                 borderColor: theme.swatch.accent,
                 boxShadow: `0 0 25px ${theme.swatch.accent}55`,
               } : undefined}
-              title="Home Catalog (All Items)"
+              title="All Gear (Entire Catalog)"
             >
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-colors"
-                style={isHomeSelected ? {
+                style={isAllSelected ? {
                   backgroundColor: theme.swatch.accent,
                   color: '#ffffff',
                 } : {
@@ -114,50 +115,49 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
                   color: '#a1a1aa',
                 }}
               >
-                <HomeIcon className="w-5 h-5" />
+                <LayoutGrid className="w-5 h-5" />
               </div>
-              <span className="text-xs font-bold tracking-tight">Home</span>
+              <span className="text-xs font-bold tracking-tight">All Gear</span>
             </button>
           );
         })()}
 
-        {categories
-          .filter((c) => c.slug !== 'home')
-          .map((cat) => {
-            const Icon = getCategoryIcon(cat.slug);
-            const isSelected = selectedCatId === cat.id || selectedCatId === cat.slug;
+        {categories.map((cat) => {
+          const Icon = getCategoryIcon(cat.slug);
+          const isSelected = selectedCatId === cat.id || selectedCatId === cat.slug;
 
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCatId(cat.slug)}
-                className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border backdrop-blur-xl transition-all duration-200 text-center ${
-                  isSelected
-                    ? 'text-white scale-[1.02]'
-                    : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 text-zinc-300 hover:text-white'
-                }`}
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCatId(cat.slug)}
+              className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border backdrop-blur-xl transition-all duration-200 text-center ${
+                isSelected
+                  ? 'text-white scale-[1.02]'
+                  : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20 text-zinc-300 hover:text-white'
+              }`}
+              style={isSelected ? {
+                backgroundColor: theme.swatch.accent + '25',
+                borderColor: theme.swatch.accent,
+                boxShadow: `0 0 25px ${theme.swatch.accent}55`,
+              } : undefined}
+              title={`Explore ${cat.name}`}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-colors"
                 style={isSelected ? {
-                  backgroundColor: theme.swatch.accent + '25',
-                  borderColor: theme.swatch.accent,
-                  boxShadow: `0 0 25px ${theme.swatch.accent}55`,
-                } : undefined}
+                  backgroundColor: theme.swatch.accent,
+                  color: '#ffffff',
+                } : {
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  color: '#a1a1aa',
+                }}
               >
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-colors"
-                  style={isSelected ? {
-                    backgroundColor: theme.swatch.accent,
-                    color: '#ffffff',
-                  } : {
-                    backgroundColor: 'rgba(255,255,255,0.06)',
-                    color: '#a1a1aa',
-                  }}
-                >
-                  <Icon className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold tracking-tight">{cat.name}</span>
-              </button>
-            );
-          })}
+                <Icon className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-semibold tracking-tight">{cat.name}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Products in selected Category / Blurred Feed Loading */}

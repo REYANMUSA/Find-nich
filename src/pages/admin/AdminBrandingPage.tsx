@@ -13,6 +13,14 @@ export const AdminBrandingPage: React.FC = () => {
   const [heroHeadlineInput, setHeroHeadlineInput] = useState(settings.hero_headline || 'Curated Tech Essentials. Tested Without Bias.');
   const [heroSubheadlineInput, setHeroSubheadlineInput] = useState(settings.hero_subheadline || 'Handpicked EDC, minimalist desk setups, and everyday tech gear with genuine editorial notes and direct Amazon access.');
   const [announcementInput, setAnnouncementInput] = useState(settings.announcement || '');
+  const [ownerNameInput, setOwnerNameInput] = useState(settings.owner_name || 'Rayan Musa');
+  const [tiktokInput, setTiktokInput] = useState(settings.social_tiktok || '');
+  const [youtubeInput, setYoutubeInput] = useState(settings.social_youtube || '');
+  const [instagramInput, setInstagramInput] = useState(settings.social_instagram || '');
+  const [xInput, setXInput] = useState(settings.social_x || '');
+  const [snapchatInput, setSnapchatInput] = useState(settings.social_snapchat || '');
+  const [facebookInput, setFacebookInput] = useState(settings.social_facebook || '');
+
   const [selectedAdminTheme, setSelectedAdminTheme] = useState<ThemeId>(settings.admin_theme || 'helios');
   const [selectedPublicTheme, setSelectedPublicTheme] = useState<ThemeId>(settings.public_theme || 'helios');
   const [applyToPublicStore, setApplyToPublicStore] = useState(settings.apply_to_public !== undefined ? settings.apply_to_public : true);
@@ -49,6 +57,13 @@ export const AdminBrandingPage: React.FC = () => {
         hero_headline: heroHeadlineInput.trim(),
         hero_subheadline: heroSubheadlineInput.trim(),
         announcement: announcementInput.trim(),
+        owner_name: ownerNameInput.trim() || 'Rayan Musa',
+        social_tiktok: tiktokInput.trim(),
+        social_youtube: youtubeInput.trim(),
+        social_instagram: instagramInput.trim(),
+        social_x: xInput.trim(),
+        social_snapchat: snapchatInput.trim(),
+        social_facebook: facebookInput.trim(),
         admin_theme: selectedAdminTheme,
         public_theme: applyToPublicStore ? selectedAdminTheme : selectedPublicTheme,
         apply_to_public: applyToPublicStore,
@@ -65,7 +80,7 @@ export const AdminBrandingPage: React.FC = () => {
 
       setMessage({
         type: 'success',
-        text: 'Branding and theme saved permanently to database and db.json! Changes will never be lost.',
+        text: 'Branding, owner identity, social accounts, and themes saved permanently! Changes apply immediately.',
       });
     } catch (err: any) {
       setMessage({
@@ -258,6 +273,154 @@ export const AdminBrandingPage: React.FC = () => {
               onChange={(e) => setAnnouncementInput(e.target.value)}
               placeholder="e.g. 🎉 New 2026 ergonomic desk gear collection just published!"
               className="w-full h-11 px-4 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Owner Identity & Personalization (Rayan Musa / nusis man) */}
+      <div className="bg-[#131722]/90 border border-white/10 rounded-2xl p-5 sm:p-8 backdrop-blur-md shadow-xl space-y-6 text-left">
+        <div className="border-b border-white/10 pb-4">
+          <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <span className="w-6 h-6 rounded-lg bg-violet-600 text-white flex items-center justify-center font-bold text-xs">RM</span>
+            <span>Owner Account Name & Greetings</span>
+          </h2>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Your personal owner display name. Shown in the top bar, dashboard greetings, and control panel.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <label className="block text-xs font-semibold text-zinc-300">
+            Account Owner Name
+          </label>
+          <input
+            type="text"
+            value={ownerNameInput}
+            onChange={(e) => setOwnerNameInput(e.target.value)}
+            placeholder="e.g. Rayan Musa or nusis man"
+            className="w-full h-11 px-4 text-sm bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
+          />
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-[11px] text-zinc-400">Quick suggestions:</span>
+            {['Rayan Musa', 'Rayan', 'nusis man'].map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setOwnerNameInput(name)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                  ownerNameInput === name
+                    ? 'bg-violet-600 text-white border-violet-500'
+                    : 'bg-white/5 border-white/10 text-zinc-300 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Social Media Header Accounts (TikTok, YouTube, Instagram, X, Snapchat, Facebook) */}
+      <div className="bg-[#131722]/90 border border-white/10 rounded-2xl p-5 sm:p-8 backdrop-blur-md shadow-xl space-y-6 text-left">
+        <div className="border-b border-white/10 pb-4">
+          <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <Globe className="w-5 h-5 text-cyan-400" />
+            <span>Social Media Header Accounts</span>
+          </h2>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            When you enter a URL here, its logo appears in the top navigation header for all visitors. If you want to remove an account icon, simply delete its URL and save.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* TikTok */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
+              <span className="text-[#ff0050] font-bold">TikTok</span>
+              <span className="text-[11px] text-zinc-500">(Profile URL)</span>
+            </label>
+            <input
+              type="url"
+              value={tiktokInput}
+              onChange={(e) => setTiktokInput(e.target.value)}
+              placeholder="https://www.tiktok.com/@youraccount"
+              className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
+            />
+          </div>
+
+          {/* YouTube */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
+              <span className="text-[#ff0000] font-bold">YouTube</span>
+              <span className="text-[11px] text-zinc-500">(Channel or Shorts URL)</span>
+            </label>
+            <input
+              type="url"
+              value={youtubeInput}
+              onChange={(e) => setYoutubeInput(e.target.value)}
+              placeholder="https://www.youtube.com/@yourchannel"
+              className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
+            />
+          </div>
+
+          {/* Instagram */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
+              <span className="text-[#e4405f] font-bold">Instagram</span>
+              <span className="text-[11px] text-zinc-500">(Profile URL)</span>
+            </label>
+            <input
+              type="url"
+              value={instagramInput}
+              onChange={(e) => setInstagramInput(e.target.value)}
+              placeholder="https://www.instagram.com/yourhandle"
+              className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
+            />
+          </div>
+
+          {/* X / Twitter */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
+              <span className="text-white font-bold">X (Twitter)</span>
+              <span className="text-[11px] text-zinc-500">(Profile URL)</span>
+            </label>
+            <input
+              type="url"
+              value={xInput}
+              onChange={(e) => setXInput(e.target.value)}
+              placeholder="https://x.com/yourhandle"
+              className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
+            />
+          </div>
+
+          {/* Snapchat */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
+              <span className="text-[#fffc00] font-bold">Snapchat</span>
+              <span className="text-[11px] text-zinc-500">(Profile URL)</span>
+            </label>
+            <input
+              type="url"
+              value={snapchatInput}
+              onChange={(e) => setSnapchatInput(e.target.value)}
+              placeholder="https://www.snapchat.com/add/yourname"
+              className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
+            />
+          </div>
+
+          {/* Facebook */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-2">
+              <span className="text-[#1877f2] font-bold">Facebook</span>
+              <span className="text-[11px] text-zinc-500">(Page or Profile URL)</span>
+            </label>
+            <input
+              type="url"
+              value={facebookInput}
+              onChange={(e) => setFacebookInput(e.target.value)}
+              placeholder="https://www.facebook.com/yourpage"
+              className="w-full h-11 px-4 text-xs font-mono bg-[#0E101A] border border-white/10 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
             />
           </div>
         </div>

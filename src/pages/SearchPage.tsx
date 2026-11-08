@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search as SearchIcon,
   X,
@@ -14,9 +14,12 @@ import {
   LayoutGrid,
   RefreshCw,
   ExternalLink,
+  Flame,
+  ArrowRight,
+  Hash,
 } from 'lucide-react';
 import { Product, Category } from '../types';
-import { fetchCategories, fetchProducts, trackOutboundClick } from '../lib/api';
+import { fetchCategories, fetchProducts } from '../lib/api';
 import { ProductCard } from '../components/ProductCard';
 import { useSiteSettings } from '../lib/settingsStore';
 import { getTheme } from '../lib/themes';
@@ -26,7 +29,7 @@ interface SearchPageProps {
   initialQuery?: string;
 }
 
-const DEFAULT_RECENT_SEARCHES = ['#07#00', 'kettle', 'pour over', 'charger', '#07', 'knife block', 'desk'];
+const DEFAULT_RECENT_SEARCHES = ['#07#00', 'kettle', 'charger', '#07', 'desk'];
 
 function getCategoryIcon(slug: string) {
   switch (slug.toLowerCase()) {
@@ -60,6 +63,10 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortOption, setSortOption] = useState<string>('latest');
+  const [allCatalogProducts, setAllCatalogProducts] = useState<Product[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem('fn_recent_searches');
@@ -70,10 +77,18 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   });
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch categories and catalog baseline
   useEffect(() => {
     fetchCategories().then(setCategories);
+    fetchProducts({ limit: 48, sort: 'popular' })
+      .then((res) => {
+        setAllCatalogProducts(res.products);
+        setSuggestedProducts(res.products.slice(0, 8));
+      })
+      .catch(() => {});
   }, []);
 
   const executeSearch = (searchTerm: string, cat = selectedCategory) => {
@@ -90,7 +105,6 @@ export const SearchPage: React.FC<SearchPageProps> = ({
       })
       .catch(() => setLoading(false));
 
-    // Save to recents if not empty
     if (searchTerm.trim() && !recentSearches.includes(searchTerm.trim().toLowerCase())) {
       const updated = [searchTerm.trim().toLowerCase(), ...recentSearches.slice(0, 5)];
       setRecentSearches(updated);
@@ -109,38 +123,166 @@ export const SearchPage: React.FC<SearchPageProps> = ({
     localStorage.removeItem('fn_recent_searches');
   };
 
+  // Live Auto-Suggestions calculation
+  const liveSuggestions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+
+    const cleanNum = q.replace(/[^0-9]/g, '');
+    const results: { type: 'item_number' | 'product' | 'category'; label: string; sublabel?: string; value: string; slug?: string }[] = [];
+
+    // 1. Matches by category
+    categories.forEach((c) => {
+      if (c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q)) {
+        results.push({
+          type: 'category',
+          label: `${c.name} Department`,
+          sublabel: 'Filter category',
+          value: c.slug,
+        });
+      }
+    });
+
+    // 2. Matches by product custom code or number
+    allCatalogProducts.forEach((p) => {
+      const code = (p.custom_code || `#${p.product_number}`).toLowerCase();
+      const numStr = String(p.product_number);
+      const isNumMatch = cleanNum && (numStr.includes(cleanNum) || code.includes(q));
+      const isNameMatch = p.name.toLowerCase().includes(q);
+
+      if (isNumMatch) {
+        results.push({
+          type: 'item_number',
+          label: p.custom_code || `#${p.product_number}`,
+          sublabel: p.name,
+          value: p.custom_code || `#${p.product_number}`,
+          slug: p.slug,
+        });
+      } else if (isNameMatch) {
+        results.push({
+          type: 'product',
+          label: p.name,
+          sublabel: p.custom_code || `#${p.product_number}`,
+          value: p.name,
+          slug: p.slug,
+        });
+      }
+    });
+
+    return results.slice(0, 6);
+  }, [query, categories, allCatalogProducts]);
+
+  const handleSelectSuggestion = (item: { value: string; slug?: string; type: string }) => {
+    setShowSuggestions(false);
+    if (item.type === 'category') {
+      setSelectedCategory(item.value);
+      setQuery('');
+    } else if (item.slug) {
+      onViewProduct(item.slug);
+    } else {
+      setQuery(item.value);
+    }
+  };
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 text-left pb-24">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 text-left pb-28">
       {/* Header */}
       <div>
         <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${theme.classes.textPrimary}`}>
           Search Catalog
         </h1>
         <p className={`text-xs sm:text-sm ${theme.classes.textMuted} mt-1`}>
-          Find products by name, specs, or adjustable item numbers (e.g. #07#00, #07, #00, 07).
+          Instant search with live suggestions by item number (e.g. #07#00, #01) or product name.
         </p>
       </div>
 
-      {/* Glassmorphic Search Bar */}
+      {/* Modern App Search Bar with Real-Time Suggestions */}
       <div className="relative">
-        <SearchIcon className="absolute left-4 top-3.5 w-4 h-4 text-zinc-400" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search products or item numbers (e.g. #07#00, #07, #00, kettle)..."
-          autoFocus={!initialQuery}
-          className={`w-full h-12 pl-11 pr-11 text-sm bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl ${theme.classes.textPrimary} placeholder:text-zinc-500 focus:outline-none focus:ring-1 shadow-md transition-colors`}
-          style={{ borderColor: query ? theme.swatch.accent : undefined }}
-        />
-        {query && (
-          <button
-            onClick={() => setQuery('')}
-            className="absolute right-3.5 top-3.5 p-1 text-zinc-400 hover:text-white"
-            aria-label="Clear input"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <div className="relative z-20">
+          <SearchIcon className="absolute left-4 top-3.5 w-4 h-4 text-zinc-400 pointer-events-none" />
+          <input
+            ref={searchInputRef}
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            value={query}
+            onFocus={() => setShowSuggestions(true)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setShowSuggestions(true);
+            }}
+            placeholder="Search item numbers (e.g. #07#00, #01, #12) or keywords..."
+            autoFocus={!initialQuery}
+            className={`w-full h-12 pl-11 pr-11 text-sm bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl ${theme.classes.textPrimary} placeholder:text-zinc-500 focus:outline-none focus:ring-1 shadow-md transition-colors`}
+            style={{ borderColor: query ? theme.swatch.accent : undefined }}
+          />
+          {query && (
+            <button
+              onClick={() => {
+                setQuery('');
+                setShowSuggestions(false);
+              }}
+              className="absolute right-3.5 top-3.5 p-1 text-zinc-400 hover:text-white"
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Live Auto-Suggestions Dropdown */}
+        {showSuggestions && liveSuggestions.length > 0 && (
+          <div className="absolute top-14 left-0 right-0 z-30 bg-[#0E121D]/95 border border-white/15 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden divide-y divide-white/[0.06] animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="p-2 text-[10px] uppercase font-bold text-zinc-400 px-3 flex items-center justify-between">
+              <span>Suggestions</span>
+              <button
+                onClick={() => setShowSuggestions(false)}
+                className="text-zinc-400 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+            {liveSuggestions.map((item, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSelectSuggestion(item)}
+                className="w-full px-4 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-white/[0.08] transition-colors group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: theme.swatch.accent + '25',
+                      color: theme.swatch.accent,
+                    }}
+                  >
+                    {item.type === 'item_number' ? (
+                      <Hash className="w-3.5 h-3.5" />
+                    ) : item.type === 'category' ? (
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                    ) : (
+                      <SearchIcon className="w-3.5 h-3.5" />
+                    )}
+                  </div>
+                  <div className="truncate">
+                    <span className="text-xs font-bold text-white block truncate group-hover:text-violet-300">
+                      {item.label}
+                    </span>
+                    {item.sublabel && (
+                      <span className="text-[11px] text-zinc-400 block truncate">
+                        {item.sublabel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white shrink-0 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -150,6 +292,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           Filter by Department Logo
         </span>
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-1 px-1">
+          {/* First Button: All Gear */}
           <button
             onClick={() => setSelectedCategory('all')}
             className={`group flex items-center gap-2 px-3.5 py-2 rounded-xl border backdrop-blur-md transition-all shrink-0 ${
@@ -175,7 +318,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
             >
               <LayoutGrid className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-semibold">All</span>
+            <span className="text-xs font-bold">All Gear</span>
           </button>
 
           {categories.map((cat) => {
@@ -264,7 +407,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
         </div>
       </div>
 
-      {/* Product Results / Blurred Feed Loading */}
+      {/* Product Results / Blurred Feed Loading / Suggested Gear Fallback */}
       {loading ? (
         <div className="relative py-2">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6 filter blur-[7px] opacity-40 pointer-events-none select-none transition-all duration-300">
@@ -292,12 +435,43 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           </div>
         </div>
       ) : products.length === 0 ? (
-        <div className="py-20 text-center bg-white/[0.02] border border-white/[0.06] rounded-2xl p-8 space-y-3">
-          <Package className="w-10 h-10 text-zinc-600 mx-auto" />
-          <h3 className="text-base font-bold text-white">No items found</h3>
-          <p className="text-xs text-zinc-400 max-w-sm mx-auto">
-            No matches for "{query}". Try searching for #07#00, #07, #00, or a category like kitchen or home.
-          </p>
+        <div className="space-y-8">
+          {/* Friendly notice */}
+          <div className="py-10 text-center bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 sm:p-8 space-y-2.5">
+            <Package className="w-9 h-9 text-zinc-500 mx-auto" />
+            <h3 className="text-base font-bold text-white">
+              No exact match for "{query}"
+            </h3>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+              Check out our recommended essentials below, or search by numbers like #07#00, #01, or #12.
+            </p>
+          </div>
+
+          {/* Suggested Gear Fallback: NEVER a dead end! */}
+          {suggestedProducts.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 text-amber-400" />
+                <h2 className="text-sm font-extrabold text-white tracking-tight">
+                  Suggested Gear for You
+                </h2>
+                <span className="text-[11px] text-zinc-400">
+                  (Popular verified catalog gear)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
+                {suggestedProducts.map((p) => (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    categories={categories}
+                    onViewDetails={onViewProduct}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">

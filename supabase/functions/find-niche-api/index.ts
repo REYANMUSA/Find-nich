@@ -91,7 +91,16 @@ async function productsQuery(params: URLSearchParams) {
   const limit = Math.min(48, Math.max(1, parseInt(params.get("limit") || "12", 10) || 12));
   let query = db.from("products").select("*", { count: "exact" }).eq("status", "published").is("deleted_at", null);
   const qText = (params.get("q") || "").trim();
-  if (qText) query = query.or("name.ilike.%" + qText.replace(/[,%()]/g, " ") + "%,short_description.ilike.%" + qText.replace(/[,%()]/g, " ") + "%");
+  if (qText) {
+    const cleanNum = qText.replace(/[^0-9]/g, "");
+    const parsedNum = cleanNum ? parseInt(cleanNum, 10) : null;
+    const sanitizedText = qText.replace(/[,%()]/g, " ");
+    let orConditions = "name.ilike.%" + sanitizedText + "%,short_description.ilike.%" + sanitizedText + "%,custom_code.ilike.%" + sanitizedText + "%";
+    if (parsedNum !== null && !isNaN(parsedNum)) {
+      orConditions += ",product_number.eq." + parsedNum;
+    }
+    query = query.or(orConditions);
+  }
   const cat = params.get("category");
   if (cat && cat !== "all") {
     const { data: catRow } = await db.from("categories").select("id").or("id.eq." + cat + ",slug.eq." + cat).maybeSingle();
@@ -408,7 +417,11 @@ async function handle(req: Request) {
   }
   if (path === "/api/admin/settings" && method === "PATCH") {
     const body = await req.json().catch(() => ({}));
-    const allowed = ["logo_name", "tagline", "hero_headline", "hero_subheadline", "announcement", "admin_theme", "public_theme", "apply_to_public"];
+    const allowed = [
+      "logo_name", "tagline", "hero_headline", "hero_subheadline", "announcement",
+      "admin_theme", "public_theme", "apply_to_public", "owner_name",
+      "social_instagram", "social_tiktok", "social_youtube", "social_x", "social_snapchat", "social_facebook"
+    ];
     const changes: any = { updated_at: new Date().toISOString() };
     for (const key of allowed) if (body[key] !== undefined) changes[key] = body[key];
     if (changes.logo_name !== undefined && !q(changes.logo_name).trim()) return err("VALIDATION_ERROR", "Logo name cannot be empty.");

@@ -138,10 +138,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
         <div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
-            Welcome, Store Owner
+            Welcome, {settings.owner_name || 'Rayan Musa'}
           </h1>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Real-time catalog discovery metrics & verified affiliate interest
+            Real-time catalog discovery metrics & verified affiliate interest &bull; <span className="text-violet-300 font-medium">nusis man</span>
           </p>
 
           {/* Quick Filter Pills */}

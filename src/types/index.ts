@@ -80,5 +80,13 @@ export interface SiteSettings {
   admin_theme: ThemeId;
   public_theme: ThemeId;
   apply_to_public: boolean;
+  owner_name?: string; // Default: 'Rayan Musa' or 'nusis man'
+  social_instagram?: string;
+  social_tiktok?: string;
+  social_youtube?: string;
+  social_x?: string;
+  social_snapchat?: string;
+  social_facebook?: string;
   updated_at?: string;
 }
+
