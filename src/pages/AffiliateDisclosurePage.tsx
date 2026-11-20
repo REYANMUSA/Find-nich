@@ -10,11 +10,13 @@ interface AffiliateDisclosurePageProps {
 export const AffiliateDisclosurePage: React.FC<AffiliateDisclosurePageProps> = ({ onBack }) => {
   const { settings } = useSiteSettings();
   const theme = getTheme(settings.public_theme || 'helios');
+  const isManasa = theme.id === 'manasa';
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10 text-left">
       <div>
         <button
+          type="button"
           onClick={onBack}
           className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
             theme.isDark
@@ -37,9 +39,9 @@ export const AffiliateDisclosurePage: React.FC<AffiliateDisclosurePageProps> = (
       </div>
 
       {/* Mandatory Associates Statement */}
-      <div className={`p-5 rounded-2xl border ${theme.classes.borderCard} ${theme.classes.bgCard} backdrop-blur-md shadow-xl space-y-2`}>
+      <div className={`p-5 rounded-xl border ${theme.classes.borderCard} ${theme.classes.bgCard} ${isManasa ? '' : 'backdrop-blur-md shadow-xl'} space-y-2`}>
         <div className={`flex items-center gap-2 font-bold text-sm ${theme.classes.textPrimary}`}>
-          <ShieldCheck className="w-5 h-5 text-emerald-400" />
+          <ShieldCheck className={`w-5 h-5 ${theme.isDark ? 'text-emerald-400' : 'text-zinc-900'}`} />
           <span>Official Amazon Associates Program Statement</span>
         </div>
         <p className={`text-base font-bold italic tracking-wide ${theme.classes.textPrimary}`}>
@@ -66,7 +68,7 @@ export const AffiliateDisclosurePage: React.FC<AffiliateDisclosurePageProps> = (
             Does using your link cost me more?
           </h2>
           <p className={`${theme.classes.textSecondary} font-normal`}>
-            <strong className="text-white">No, absolutely not.</strong> The purchase price, taxes, Prime benefits, return window, shipping options, and warranty conditions are completely identical whether you click through our link or search for the product independently on Amazon. The referral commission is paid directly by Amazon out of their standard operating margin.
+            <strong className={theme.classes.textPrimary}>No, absolutely not.</strong> The purchase price, taxes, Prime benefits, return window, shipping options, and warranty conditions are completely identical whether you click through our link or search for the product independently on Amazon. The referral commission is paid directly by Amazon out of their standard operating margin.
           </p>
         </div>
 
@@ -75,7 +77,7 @@ export const AffiliateDisclosurePage: React.FC<AffiliateDisclosurePageProps> = (
             Does {settings.logo_name || 'Find Niche'} sell products or collect payments?
           </h2>
           <p className={`${theme.classes.textSecondary} font-normal`}>
-            No. {settings.logo_name || 'Find Niche'} is strictly an editorial product discovery catalog. All commercial transactions—including order processing, billing, credit card security, shipping, package tracking, and customer support—take place exclusively on Amazon's official platform under Amazon's terms of service.
+            No. {settings.logo_name || 'Find Niche'} is strictly an editorial product discovery catalog. All commercial transactions—including order processing, billing, credit card security, shipping, package tracking, and customer support—take place exclusively on Amazon&apos;s official platform under Amazon&apos;s terms of service.
           </p>
         </div>
 
@@ -84,7 +86,7 @@ export const AffiliateDisclosurePage: React.FC<AffiliateDisclosurePageProps> = (
             Why do we not display static prices?
           </h2>
           <p className={`${theme.classes.textSecondary} font-normal`}>
-            Amazon prices change dynamically based on deals, coupons, inventory, and seller selections. In compliance with Amazon's Operating Policies, we do not scrape or display static prices to prevent displaying inaccurate or outdated price claims. We invite you to view live prices directly on Amazon.
+            Amazon prices change dynamically based on deals, coupons, inventory, and seller selections. In compliance with Amazon&apos;s Operating Policies, we do not scrape or display static prices to prevent displaying inaccurate or outdated price claims. We invite you to view live prices directly on Amazon.
           </p>
         </div>
 
@@ -98,7 +100,7 @@ export const AffiliateDisclosurePage: React.FC<AffiliateDisclosurePageProps> = (
         </div>
       </div>
 
-      <div className="pt-6 border-t border-white/10 text-xs text-zinc-500">
+      <div className={`pt-6 border-t ${theme.isDark ? 'border-white/10' : 'border-zinc-200'} text-xs ${theme.classes.textMuted}`}>
         <p>Last updated: October 2026. For questions regarding our affiliate disclosures, reach out via the owner contact channels.</p>
       </div>
     </div>

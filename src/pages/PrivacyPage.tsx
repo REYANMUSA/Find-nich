@@ -10,11 +10,13 @@ interface PrivacyPageProps {
 export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
   const { settings } = useSiteSettings();
   const theme = getTheme(settings.public_theme || 'helios');
+  const isManasa = theme.id === 'manasa';
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10 text-left">
       <div>
         <button
+          type="button"
           onClick={onBack}
           className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
             theme.isDark
@@ -37,25 +39,25 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
       </div>
 
       {/* Privacy Highlights */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-white/10">
-        <div className={`p-4.5 rounded-2xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-1.5 backdrop-blur-md shadow-md`}>
-          <EyeOff className="w-5 h-5 text-cyan-400" />
+      <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t ${theme.isDark ? 'border-white/10' : 'border-zinc-200'}`}>
+        <div className={`p-4.5 rounded-xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-1.5 ${isManasa ? '' : 'backdrop-blur-md shadow-md'}`}>
+          <EyeOff className={`w-5 h-5 ${theme.isDark ? 'text-cyan-400' : 'text-zinc-800'}`} />
           <h3 className={`text-xs font-bold ${theme.classes.textPrimary}`}>No Visitor Accounts</h3>
           <p className={`text-xs ${theme.classes.textMuted} leading-relaxed`}>
             Browse and search products freely without registration or email forms.
           </p>
         </div>
 
-        <div className={`p-4.5 rounded-2xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-1.5 backdrop-blur-md shadow-md`}>
-          <Lock className="w-5 h-5 text-emerald-400" />
+        <div className={`p-4.5 rounded-xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-1.5 ${isManasa ? '' : 'backdrop-blur-md shadow-md'}`}>
+          <Lock className={`w-5 h-5 ${theme.isDark ? 'text-emerald-400' : 'text-zinc-800'}`} />
           <h3 className={`text-xs font-bold ${theme.classes.textPrimary}`}>Zero Payment Storage</h3>
           <p className={`text-xs ${theme.classes.textMuted} leading-relaxed`}>
             All purchases take place on Amazon. We never see or store billing data.
           </p>
         </div>
 
-        <div className={`p-4.5 rounded-2xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-1.5 backdrop-blur-md shadow-md`}>
-          <Shield className="w-5 h-5 text-violet-400" />
+        <div className={`p-4.5 rounded-xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-1.5 ${isManasa ? '' : 'backdrop-blur-md shadow-md'}`}>
+          <Shield className={`w-5 h-5 ${theme.isDark ? 'text-violet-400' : 'text-zinc-800'}`} />
           <h3 className={`text-xs font-bold ${theme.classes.textPrimary}`}>Coarse Click Metrics</h3>
           <p className={`text-xs ${theme.classes.textMuted} leading-relaxed`}>
             Outbound interest counts contain zero personal information or cookies.
@@ -79,7 +81,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
             2. Product Interest & Click Analytics
           </h2>
           <p className={`${theme.classes.textSecondary} font-normal`}>
-            When you click “Check price on Amazon”, the server records an aggregate counter increment (e.g. <em className="text-white">“Item #07 was clicked from the catalog grid”</em>). We do not correlate clicks with your identity, do not set third-party tracking beacons, and do not track your activity across other websites.
+            When you click “Check price on Amazon”, the server records an aggregate counter increment (e.g. <em className={theme.classes.textPrimary}>“Item #07 was clicked from the catalog grid”</em>). We do not correlate clicks with your identity, do not set third-party tracking beacons, and do not track your activity across other websites.
           </p>
         </div>
 
@@ -88,10 +90,10 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
             3. Cookies & Session Storage
           </h2>
           <p className={`${theme.classes.textSecondary} font-normal`}>
-            <strong className="text-white">Public Visitors:</strong> {settings.logo_name || 'Find Niche'} does not set tracking or advertising cookies on public visitors. Browser local storage is used solely to cache catalog categories for faster offline/mobile navigation.
+            <strong className={theme.classes.textPrimary}>Public Visitors:</strong> {settings.logo_name || 'Find Niche'} does not set tracking or advertising cookies on public visitors. Browser local storage is used solely to cache catalog categories for faster offline/mobile navigation.
           </p>
           <p className={`${theme.classes.textSecondary} font-normal`}>
-            <strong className="text-white">Store Administrator:</strong> When the verified store owner signs into the private administration dashboard, an encrypted session cookie (<code className="text-violet-300">fn_admin_session</code>) is set to maintain session security. This cookie is not issued to public visitors.
+            <strong className={theme.classes.textPrimary}>Store Administrator:</strong> When the verified store owner signs into the private administration dashboard, an encrypted session cookie (<code className={theme.isDark ? 'text-violet-300' : 'text-zinc-900 font-semibold'}>fn_admin_session</code>) is set to maintain session security. This cookie is not issued to public visitors.
           </p>
         </div>
 
@@ -100,7 +102,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
             4. External Amazon Links
           </h2>
           <p className={`${theme.classes.textSecondary} font-normal`}>
-            When you follow an affiliate link to Amazon, you leave {settings.logo_name || 'Find Niche'}. Commercial transactions, account management, payments, shipping, and data handling on Amazon are governed exclusively by Amazon's Privacy Notice and Conditions of Use.
+            When you follow an affiliate link to Amazon, you leave {settings.logo_name || 'Find Niche'}. Commercial transactions, account management, payments, shipping, and data handling on Amazon are governed exclusively by Amazon&apos;s Privacy Notice and Conditions of Use.
           </p>
         </div>
 
@@ -114,10 +116,9 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onBack }) => {
         </div>
       </div>
 
-      <div className="pt-6 border-t border-white/10 text-xs text-zinc-500">
+      <div className={`pt-6 border-t ${theme.isDark ? 'border-white/10' : 'border-zinc-200'} text-xs ${theme.classes.textMuted}`}>
         <p>Last verified: October 2026.</p>
       </div>
     </div>
   );
 };
-

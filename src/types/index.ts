@@ -69,7 +69,8 @@ export type ThemeId =
   | 'slate'
   | 'titanium'
   | 'crimson'
-  | 'classic';
+  | 'classic'
+  | 'manasa';
 
 export interface SiteSettings {
   logo_name: string;

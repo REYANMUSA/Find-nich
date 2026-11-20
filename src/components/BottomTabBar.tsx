@@ -11,6 +11,7 @@ interface BottomTabBarProps {
 export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentPath, onNavigate }) => {
   const { settings } = useSiteSettings();
   const theme = getTheme(settings.public_theme || 'helios');
+  const isManasa = theme.id === 'manasa';
   const [isKeyboardOpen, setIsKeyboardOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -63,18 +64,25 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentPath, onNavig
 
   return (
     <aside
-      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-40 md:hidden select-none transition-all duration-300 ${
+      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-40 md:hidden select-none transition-all duration-200 ${
         isKeyboardOpen ? 'opacity-0 translate-y-16 pointer-events-none' : 'opacity-100 translate-y-0'
       }`}
     >
-      {/* Floating Capsule Dock Inspired by Screenshot 2 */}
       <nav
         aria-label="Mobile Navigation"
-        className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-full backdrop-blur-2xl border shadow-[0_16px_40px_rgba(0,0,0,0.65)] transition-all duration-300"
-        style={{
-          backgroundColor: theme.isDark ? 'rgba(18, 22, 34, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-          borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
-        }}
+        className={
+          isManasa
+            ? 'pointer-events-auto flex items-center gap-1 p-1.5 rounded-full bg-white border border-zinc-200 shadow-lg'
+            : 'pointer-events-auto flex items-center gap-1 p-1.5 rounded-full backdrop-blur-2xl border shadow-[0_16px_40px_rgba(0,0,0,0.65)] transition-all duration-300'
+        }
+        style={
+          isManasa
+            ? undefined
+            : {
+                backgroundColor: theme.isDark ? 'rgba(18, 22, 34, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+              }
+        }
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -86,19 +94,20 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentPath, onNavig
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => onNavigate(tab.id)}
-              className={`flex items-center gap-2 rounded-full transition-all duration-300 ${
+              className={`flex items-center gap-2 rounded-full transition-all duration-200 min-h-[38px] ${
                 isActive
-                  ? `${theme.classes.accentPillActive} px-4 py-2 text-xs font-bold shadow-md scale-102`
+                  ? isManasa
+                    ? 'bg-zinc-900 text-white px-4 py-2 text-xs font-semibold'
+                    : `${theme.classes.accentPillActive} px-4 py-2 text-xs font-bold shadow-md scale-102`
                   : `p-2.5 ${theme.classes.textMuted} ${theme.isDark ? 'hover:text-white' : 'hover:text-zinc-950'} active:scale-95`
               }`}
               title={tab.label}
               aria-current={isActive ? 'page' : undefined}
             >
               <Icon
-                className={`w-4 h-4 shrink-0 transition-transform ${
-                  isActive ? 'stroke-[2.4]' : 'stroke-[1.8]'
-                }`}
+                className={`w-4 h-4 shrink-0 ${isActive ? 'stroke-[2.2]' : 'stroke-[1.8]'}`}
               />
               {isActive && (
                 <span className="leading-none tracking-tight whitespace-nowrap">

@@ -28,15 +28,17 @@ app.use(cookieParser());
 // Static file serving for uploads and product images
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
 app.use('/uploads', express.static(path.join(PUBLIC_DIR, 'uploads'), {
-  maxAge: '7d',
+  maxAge: '30d',
   setHeaders: (res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=86400');
   },
 }));
 app.use('/images', express.static(path.join(PUBLIC_DIR, 'images'), {
-  maxAge: '7d',
+  maxAge: '30d',
   setHeaders: (res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=86400');
   },
 }));
 app.use(express.static(PUBLIC_DIR));

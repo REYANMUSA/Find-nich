@@ -14,7 +14,8 @@ export const Logo: React.FC<LogoProps> = ({
   className = '',
 }) => {
   const { settings } = useSiteSettings();
-  const theme = getTheme(settings.apply_to_public ? settings.public_theme : 'helios');
+  const theme = getTheme(settings.public_theme || settings.admin_theme || 'helios');
+  const isManasa = theme.id === 'manasa';
 
   const [justTapped, setJustTapped] = useState(false);
   const tapTimesRef = useRef<number[]>([]);
@@ -22,16 +23,13 @@ export const Logo: React.FC<LogoProps> = ({
   const handleLogoTap = (e: React.MouseEvent) => {
     e.preventDefault();
 
-    // Subtle micro-feedback on tap
     setJustTapped(true);
     setTimeout(() => setJustTapped(false), 150);
 
     const now = Date.now();
-    // Keep timestamps within the last 3000ms window
     tapTimesRef.current = tapTimesRef.current.filter((t) => now - t <= 3000);
     tapTimesRef.current.push(now);
 
-    // If 5 taps within 3 seconds, trigger secret unlock
     if (tapTimesRef.current.length >= 5) {
       tapTimesRef.current = [];
       if (onSecretAdminTrigger) {
@@ -41,12 +39,12 @@ export const Logo: React.FC<LogoProps> = ({
   };
 
   const displayName = settings.logo_name || 'Find Niche';
-  const displayTagline = settings.tagline || 'Better Products. Smarter Choices.';
+  const displayTagline = (settings.tagline ?? '').trim();
 
   return (
     <div
       onClick={handleLogoTap}
-      className={`cursor-pointer select-none flex items-center gap-2.5 transition-transform active:scale-95 ${className}`}
+      className={`cursor-pointer select-none flex items-center gap-2.5 min-w-0 transition-transform active:scale-95 ${className}`}
       title={`${displayName} (Tap 5 times for Admin access)`}
       role="button"
       tabIndex={0}
@@ -54,12 +52,14 @@ export const Logo: React.FC<LogoProps> = ({
         if (e.key === 'Enter') handleLogoTap(e as any);
       }}
     >
-      {/* Sleek Compass Emblem with Dynamic Theme Accent */}
+      {/* Emblem */}
       <div
-        className={`w-8 h-8 rounded-full text-white flex items-center justify-center shrink-0 shadow-xs transition-all duration-300 ${
-          justTapped ? 'scale-110' : ''
-        }`}
-        style={{ backgroundColor: theme.swatch.accent }}
+        className={`flex items-center justify-center shrink-0 transition-transform duration-200 ${
+          isManasa
+            ? 'w-7 h-7 rounded-md bg-zinc-900 text-white'
+            : 'w-8 h-8 rounded-full text-white shadow-xs'
+        } ${justTapped ? 'scale-105' : ''}`}
+        style={isManasa ? undefined : { backgroundColor: theme.swatch.accent }}
       >
         <svg
           viewBox="0 0 24 24"
@@ -79,12 +79,16 @@ export const Logo: React.FC<LogoProps> = ({
         </svg>
       </div>
 
-      <div className="flex flex-col text-left">
-        <span className="font-bold text-base leading-tight tracking-tight text-inherit">
+      <div className="flex flex-col text-left min-w-0">
+        <span
+          className={`font-bold leading-tight tracking-tight truncate whitespace-nowrap ${
+            isManasa ? 'text-base sm:text-lg text-zinc-950' : `text-base ${theme.classes.textPrimary}`
+          }`}
+        >
           {displayName}
         </span>
-        {showTagline && (
-          <span className="text-[10px] text-zinc-500 font-medium tracking-tight">
+        {showTagline && !isManasa && displayTagline.length > 0 && (
+          <span className={`text-[10px] ${theme.classes.textMuted} font-medium tracking-tight truncate`}>
             {displayTagline}
           </span>
         )}

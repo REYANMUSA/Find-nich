@@ -10,11 +10,13 @@ interface AboutPageProps {
 export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
   const { settings } = useSiteSettings();
   const theme = getTheme(settings.public_theme || 'helios');
+  const isManasa = theme.id === 'manasa';
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10 text-left">
       <div>
         <button
+          type="button"
           onClick={onBack}
           className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
             theme.isDark
@@ -37,30 +39,30 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
       </div>
 
       {/* Core Principles */}
-      <div className="space-y-6 pt-4 border-t border-white/10">
+      <div className={`space-y-6 pt-4 border-t ${theme.isDark ? 'border-white/10' : 'border-zinc-200'}`}>
         <h2 className={`text-lg font-bold ${theme.classes.textPrimary}`}>
           Our Curation Principles
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className={`p-4.5 rounded-2xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-2 backdrop-blur-md shadow-md`}>
-            <Compass className="w-5 h-5 text-emerald-400" />
+          <div className={`p-4.5 rounded-xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-2 ${isManasa ? '' : 'backdrop-blur-md shadow-md'}`}>
+            <Compass className={`w-5 h-5 ${theme.isDark ? 'text-emerald-400' : 'text-zinc-800'}`} />
             <h3 className={`text-sm font-bold ${theme.classes.textPrimary}`}>Restraint Over Volume</h3>
             <p className={`text-xs ${theme.classes.textMuted} leading-relaxed`}>
               We do not catalog thousands of generic items. Every item is indexed with an adjustable item number and selected for everyday practical utility.
             </p>
           </div>
 
-          <div className={`p-4.5 rounded-2xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-2 backdrop-blur-md shadow-md`}>
-            <Eye className="w-5 h-5 text-violet-400" />
+          <div className={`p-4.5 rounded-xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-2 ${isManasa ? '' : 'backdrop-blur-md shadow-md'}`}>
+            <Eye className={`w-5 h-5 ${theme.isDark ? 'text-violet-400' : 'text-zinc-800'}`} />
             <h3 className={`text-sm font-bold ${theme.classes.textPrimary}`}>Honest Evaluation</h3>
             <p className={`text-xs ${theme.classes.textMuted} leading-relaxed`}>
               We highlight both advantages and limitations. If a power bank is only 5,000mAh or a mouse is right-hand only, we state it plainly.
             </p>
           </div>
 
-          <div className={`p-4.5 rounded-2xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-2 backdrop-blur-md shadow-md`}>
-            <Shield className="w-5 h-5 text-cyan-400" />
+          <div className={`p-4.5 rounded-xl border ${theme.classes.borderCard} ${theme.classes.bgCard} space-y-2 ${isManasa ? '' : 'backdrop-blur-md shadow-md'}`}>
+            <Shield className={`w-5 h-5 ${theme.isDark ? 'text-cyan-400' : 'text-zinc-800'}`} />
             <h3 className={`text-sm font-bold ${theme.classes.textPrimary}`}>Direct Compliance</h3>
             <p className={`text-xs ${theme.classes.textMuted} leading-relaxed`}>
               We link directly to official Amazon listings using transparent Special Links. Checkout, fulfillment, and customer support are handled by Amazon.
@@ -70,7 +72,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
       </div>
 
       {/* How It Works */}
-      <div className="space-y-4 pt-4 border-t border-white/10">
+      <div className={`space-y-4 pt-4 border-t ${theme.isDark ? 'border-white/10' : 'border-zinc-200'}`}>
         <h2 className={`text-lg font-bold ${theme.classes.textPrimary}`}>
           How {settings.logo_name || 'Find Niche'} Works
         </h2>
@@ -88,15 +90,14 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
       </div>
 
       {/* Permanent Product Numbers */}
-      <div className={`space-y-3 p-5 rounded-2xl border ${theme.classes.borderCard} ${theme.classes.bgCard} backdrop-blur-md shadow-lg`}>
+      <div className={`space-y-3 p-5 rounded-xl border ${theme.classes.borderCard} ${theme.classes.bgCard} ${isManasa ? '' : 'backdrop-blur-md shadow-lg'}`}>
         <h3 className={`text-sm font-bold ${theme.classes.textPrimary}`}>
           Why We Use Product Item Numbers (#07#00, #01, #02...)
         </h3>
         <p className={`text-xs ${theme.classes.textSecondary} leading-relaxed`}>
-          In our video demonstrations on TikTok, YouTube Shorts, and Instagram, we reference short item numbers (e.g. <em className={`font-semibold ${theme.classes.textPrimary}`}>"Check Item #07 on Find Niche"</em>). You can type that number directly into the search bar at any time to land on the exact product without scrolling.
+          In our video demonstrations on TikTok, YouTube Shorts, and Instagram, we reference short item numbers (e.g. <em className={`font-semibold ${theme.classes.textPrimary}`}>&quot;Check Item #07 on Find Niche&quot;</em>). You can type that number directly into the search bar at any time to land on the exact product without scrolling.
         </p>
       </div>
     </div>
   );
 };
-

@@ -1,28 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import posthog from 'posthog-js';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { BottomTabBar } from './components/BottomTabBar';
 import { HomePage } from './pages/HomePage';
-import { ProductDetailPage } from './pages/ProductDetailPage';
-import { CategoriesPage } from './pages/CategoriesPage';
-import { SearchPage } from './pages/SearchPage';
-import { AboutPage } from './pages/AboutPage';
-import { AffiliateDisclosurePage } from './pages/AffiliateDisclosurePage';
-import { PrivacyPage } from './pages/PrivacyPage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { AdminLoginPage } from './pages/admin/AdminLoginPage';
-import { AdminLayout, AdminTab } from './pages/admin/AdminLayout';
-import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
-import { AdminProductsPage } from './pages/admin/AdminProductsPage';
-import { AdminProductFormPage } from './pages/admin/AdminProductFormPage';
-import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
-import { AdminBrandingPage } from './pages/admin/AdminBrandingPage';
-import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
-import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
 import { isAuthenticated, adminCheckSession } from './lib/api';
 import { useSiteSettings, refreshSettingsFromServer } from './lib/settingsStore';
 import { getTheme } from './lib/themes';
+import { captureEvent } from './lib/analytics';
+import type { AdminTab } from './pages/admin/AdminLayout';
+
+// Route-based code splitting: secondary public pages and entire Admin dashboard
+// are loaded on demand so mobile catalog visitors download minimal JavaScript.
+const ProductDetailPage = lazy(() =>
+  import('./pages/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage }))
+);
+const CategoriesPage = lazy(() =>
+  import('./pages/CategoriesPage').then((m) => ({ default: m.CategoriesPage }))
+);
+const SearchPage = lazy(() =>
+  import('./pages/SearchPage').then((m) => ({ default: m.SearchPage }))
+);
+const AboutPage = lazy(() =>
+  import('./pages/AboutPage').then((m) => ({ default: m.AboutPage }))
+);
+const AffiliateDisclosurePage = lazy(() =>
+  import('./pages/AffiliateDisclosurePage').then((m) => ({ default: m.AffiliateDisclosurePage }))
+);
+const PrivacyPage = lazy(() =>
+  import('./pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage }))
+);
+const NotFoundPage = lazy(() =>
+  import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage }))
+);
+
+const AdminLoginPage = lazy(() =>
+  import('./pages/admin/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage }))
+);
+const AdminLayout = lazy(() =>
+  import('./pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout }))
+);
+const AdminDashboardPage = lazy(() =>
+  import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
+);
+const AdminProductsPage = lazy(() =>
+  import('./pages/admin/AdminProductsPage').then((m) => ({ default: m.AdminProductsPage }))
+);
+const AdminProductFormPage = lazy(() =>
+  import('./pages/admin/AdminProductFormPage').then((m) => ({ default: m.AdminProductFormPage }))
+);
+const AdminCategoriesPage = lazy(() =>
+  import('./pages/admin/AdminCategoriesPage').then((m) => ({ default: m.AdminCategoriesPage }))
+);
+const AdminBrandingPage = lazy(() =>
+  import('./pages/admin/AdminBrandingPage').then((m) => ({ default: m.AdminBrandingPage }))
+);
+const AdminAnalyticsPage = lazy(() =>
+  import('./pages/admin/AdminAnalyticsPage').then((m) => ({ default: m.AdminAnalyticsPage }))
+);
+const AdminAuditLogsPage = lazy(() =>
+  import('./pages/admin/AdminAuditLogsPage').then((m) => ({ default: m.AdminAuditLogsPage }))
+);
+
+const RouteLoadingFallback: React.FC<{ isManasa: boolean; isDark: boolean }> = ({ isManasa, isDark }) => (
+  <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 flex items-center justify-center">
+    <div className={`text-xs font-medium ${isManasa || !isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+      Loading...
+    </div>
+  </div>
+);
 
 export default function App() {
   const { settings } = useSiteSettings();
@@ -60,7 +105,7 @@ export default function App() {
   // Capture public route views only; keep owner-only admin activity out of visitor analytics.
   useEffect(() => {
     if (!currentPath.startsWith('/admin')) {
-      posthog.capture('$pageview', { $current_url: window.location.href });
+      captureEvent('$pageview', { $current_url: window.location.href });
     }
   }, [currentPath]);
 
@@ -133,18 +178,19 @@ export default function App() {
 
   const handleLoginSuccess = () => {
     setIsAdminAuthed(true);
-    refreshSettingsFromServer();
+    refreshSettingsFromServer(true);
     navigate('/admin');
   };
 
   const handleLogout = () => {
     setIsAdminAuthed(false);
-    refreshSettingsFromServer();
+    refreshSettingsFromServer(true);
     navigate('/');
   };
 
   // Active theme calculation - synchronizes with admin choice for all visitors
   const publicTheme = getTheme(settings.public_theme || settings.admin_theme || 'helios');
+  const isManasa = publicTheme.id === 'manasa';
 
   // Render Router
   const renderContent = () => {
@@ -230,7 +276,7 @@ export default function App() {
     if (currentPath === '/categories') {
       return (
         <CategoriesPage
-          onSelectCategory={(categoryId) => {
+          onSelectCategory={() => {
             navigate('/');
           }}
           onViewProduct={(slug) => navigate(`/product/${slug}`)}
@@ -293,13 +339,23 @@ export default function App() {
     <div
       className={`min-h-screen flex flex-col ${
         isAdminView
-          ? 'bg-[#0B0D14] text-zinc-100'
-          : publicTheme.classes.bgApp
-      } selection:bg-violet-600 selection:text-white transition-colors duration-300`}
+          ? 'bg-[#0B0D14] text-zinc-100 selection:bg-violet-600 selection:text-white'
+          : `${publicTheme.classes.bgApp} ${
+              isManasa
+                ? 'selection:bg-zinc-900 selection:text-white'
+                : 'selection:bg-violet-600 selection:text-white'
+            }`
+      } transition-colors duration-200`}
     >
       {/* Announcement Banner if configured */}
       {!isAdminView && settings.announcement && (
-        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-semibold py-2 px-4 text-center">
+        <div
+          className={`text-xs font-semibold py-2 px-4 text-center ${
+            isManasa
+              ? 'bg-zinc-900 text-white'
+              : 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
+          }`}
+        >
           {settings.announcement}
         </div>
       )}
@@ -315,7 +371,9 @@ export default function App() {
 
       {/* Main Page Content */}
       <main className="flex-1 pb-16 md:pb-0">
-        {renderContent()}
+        <Suspense fallback={<RouteLoadingFallback isManasa={isManasa} isDark={publicTheme.isDark} />}>
+          {renderContent()}
+        </Suspense>
       </main>
 
       {/* Show public footer on non-admin views */}

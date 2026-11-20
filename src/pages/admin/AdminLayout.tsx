@@ -48,7 +48,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
 
-  const currentTheme = getTheme(settings.admin_theme || 'helios');
+  const adminThemeId: ThemeId =
+    settings.admin_theme && settings.admin_theme !== 'manasa' ? settings.admin_theme : 'helios';
+  const currentTheme = getTheme(adminThemeId);
 
   const navItems: { id: AdminTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -65,6 +67,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   };
 
   const handleQuickThemeTouch = (themeId: ThemeId) => {
+    if (themeId === 'manasa') {
+      setPublicTheme('manasa');
+      setApplyToPublic(false);
+      adminUpdateSiteSettings({
+        public_theme: 'manasa',
+        apply_to_public: false,
+      }).catch(() => {});
+      return;
+    }
     setAdminTheme(themeId);
     setPublicTheme(themeId);
     setApplyToPublic(true);
@@ -203,7 +214,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
               {THEME_LIST.map((th) => {
-                const isSel = (settings.admin_theme || 'helios') === th.id;
+                const isSel =
+                  th.id === 'manasa'
+                    ? settings.public_theme === 'manasa'
+                    : adminThemeId === th.id;
                 return (
                   <button
                     key={th.id}
@@ -212,7 +226,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       isSel ? 'ring-2 ring-white scale-110 shadow-md' : 'opacity-60 hover:opacity-100'
                     }`}
                     style={{ backgroundColor: th.swatch.card }}
-                    title={`Switch to ${th.name}`}
+                    title={th.id === 'manasa' ? 'Set Public Storefront to Manasa Editorial' : `Switch to ${th.name}`}
                   >
                     <div
                       className="w-2.5 h-2.5 rounded-full"
@@ -374,18 +388,27 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               Select Theme (Instant)
             </span>
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-              {THEME_LIST.map((th) => (
-                <button
-                  key={th.id}
-                  onClick={() => {
-                    handleQuickThemeTouch(th.id);
-                  }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10"
-                  style={{ backgroundColor: th.swatch.card }}
-                >
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: th.swatch.accent }} />
-                </button>
-              ))}
+              {THEME_LIST.map((th) => {
+                const isSel =
+                  th.id === 'manasa'
+                    ? settings.public_theme === 'manasa'
+                    : adminThemeId === th.id;
+                return (
+                  <button
+                    key={th.id}
+                    onClick={() => {
+                      handleQuickThemeTouch(th.id);
+                    }}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                      isSel ? 'ring-2 ring-white border-white' : 'border-white/10 opacity-75'
+                    }`}
+                    style={{ backgroundColor: th.swatch.card }}
+                    title={th.id === 'manasa' ? 'Set Public Storefront to Manasa Editorial' : `Switch to ${th.name}`}
+                  >
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: th.swatch.accent }} />
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

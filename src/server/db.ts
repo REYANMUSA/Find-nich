@@ -1086,9 +1086,9 @@ export class DatabaseService {
     }
     return {
       logo_name: row.logo_name || 'Find Niche',
-      tagline: row.tagline || 'Better Products. Smarter Choices.',
-      hero_headline: row.hero_headline || 'Curated Tech Essentials. Tested Without Bias.',
-      hero_subheadline: row.hero_subheadline || 'Handpicked EDC, minimalist desk setups, and everyday tech gear with genuine editorial notes and direct Amazon access.',
+      tagline: row.tagline ?? '',
+      hero_headline: row.hero_headline ?? '',
+      hero_subheadline: row.hero_subheadline ?? '',
       announcement: row.announcement || '',
       admin_theme: (row.admin_theme as ThemeId) || 'helios',
       public_theme: (row.public_theme as ThemeId) || 'helios',

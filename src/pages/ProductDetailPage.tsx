@@ -3,6 +3,7 @@ import { ArrowLeft, ExternalLink, ShieldCheck, CheckCircle2, AlertCircle, Packag
 import { Product, Category } from '../types';
 import { fetchProductBySlug, fetchCategories, fetchProducts, trackOutboundClick, adminFetchProductBySlug, isAuthenticated } from '../lib/api';
 import { ProductCard } from '../components/ProductCard';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { useSiteSettings } from '../lib/settingsStore';
 import { getTheme } from '../lib/themes';
 
@@ -19,6 +20,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 }) => {
   const { settings } = useSiteSettings();
   const theme = getTheme(settings.public_theme || 'helios');
+  const isManasa = theme.id === 'manasa';
 
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -72,8 +74,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-zinc-400 font-mono">Loading product overview...</p>
+        <div
+          className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin mx-auto"
+          style={{ borderColor: theme.swatch.accent, borderTopColor: 'transparent' }}
+        />
+        <p className={`text-xs ${theme.classes.textMuted} font-mono`}>Loading product overview...</p>
       </div>
     );
   }
@@ -81,14 +86,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   if (!product) {
     return (
       <div className="max-w-md mx-auto px-4 py-20 text-center space-y-4">
-        <Package className="w-12 h-12 text-zinc-600 mx-auto" />
-        <h2 className="text-lg font-bold text-white">Product Not Available</h2>
-        <p className="text-xs text-zinc-400">
+        <Package className={`w-12 h-12 ${theme.classes.textMuted} mx-auto`} />
+        <h2 className={`text-lg font-bold ${theme.classes.textPrimary}`}>Product Not Available</h2>
+        <p className={`text-xs ${theme.classes.textMuted}`}>
           This item could not be found or has been withdrawn from public view.
         </p>
         <button
+          type="button"
           onClick={onBack}
-          className="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-xl transition-colors"
+          className={`px-5 py-2.5 ${theme.classes.accentButton} text-xs font-semibold rounded-xl transition-colors`}
         >
           Return to Catalog
         </button>
@@ -97,22 +103,27 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   }
 
   const categoryName = categories.find((c) => c.id === product.category_id)?.name || 'Tech';
-  const displayCode = product.custom_code || `#${product.product_number.toString().padStart(3, '0')}`;
+  const displayCode = product.custom_code || `#${product.product_number.toString().padStart(2, '0')}`;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-12 text-left pb-28 md:pb-16">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-10 sm:space-y-12 text-left pb-28 md:pb-16">
       {/* Back Button & Preview Indicator */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button
+          type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors py-1.5 px-3 rounded-lg hover:bg-white/5"
+          className={`inline-flex items-center gap-2 text-xs font-semibold transition-colors py-1.5 px-3 rounded-lg self-start ${
+            theme.isDark
+              ? 'text-zinc-400 hover:text-white hover:bg-white/5'
+              : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 border border-zinc-200'
+          }`}
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to catalog</span>
         </button>
 
         {isAdminPreview && (
-          <div className="px-3 py-1 bg-amber-950/60 border border-amber-800/60 text-amber-300 rounded-lg text-xs font-medium flex items-center gap-1.5 self-start sm:self-auto">
+          <div className="px-3 py-1 bg-amber-950/80 border border-amber-700 text-amber-200 rounded-lg text-xs font-medium flex items-center gap-1.5 self-start sm:self-auto">
             <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
             <span>Admin Preview Mode: Item status is &quot;{product.status}&quot;</span>
           </div>
@@ -121,34 +132,55 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
       {/* Hero Split Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
-        {/* Left Column: Visual Presentation with Glass Card */}
+        {/* Left Column: Visual Presentation */}
         <div className="space-y-3">
-          <div className="relative aspect-[4/3] w-full bg-black/40 rounded-2xl border border-white/10 overflow-hidden shadow-2xl backdrop-blur-xl">
+          <div
+            className={
+              isManasa
+                ? 'relative aspect-[4/3] w-full bg-white rounded-xl border border-zinc-200 overflow-hidden'
+                : 'relative aspect-[4/3] w-full bg-black/40 rounded-2xl border border-white/10 overflow-hidden shadow-2xl backdrop-blur-xl'
+            }
+          >
             {!imageError && product.image_path ? (
-              <img
+              <OptimizedImage
                 src={product.image_path}
                 alt={product.name}
-                loading="eager"
-                referrerPolicy="no-referrer"
+                width={800}
+                height={600}
+                priority={true}
+                sizes="(max-width: 768px) 95vw, 560px"
                 onError={() => setImageError(true)}
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/60 text-zinc-500 p-8 text-center">
-                <Package className="w-12 h-12 stroke-[1.5] mb-2 text-zinc-600" />
+              <div
+                className={`w-full h-full flex flex-col items-center justify-center p-8 text-center ${
+                  theme.isDark ? 'bg-zinc-900/60 text-zinc-500' : 'bg-zinc-100 text-zinc-500'
+                }`}
+              >
+                <Package className="w-12 h-12 stroke-[1.5] mb-2 text-zinc-400" />
                 <span className="text-xs font-mono text-zinc-500">{displayCode}</span>
               </div>
             )}
 
-            {/* Permanent Code Tag */}
-            <div className="absolute top-3.5 left-3.5 bg-[#0B0D14]/85 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-violet-300 border border-white/10 shadow-lg">
-              {displayCode}
-            </div>
+            {/* Permanent Code Tag - omitted from corner photo in Manasa editorial mode */}
+            {!isManasa && (
+              <div
+                className="absolute top-3.5 left-3.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold border shadow-lg"
+                style={{
+                  backgroundColor: theme.isDark ? 'rgba(11, 13, 20, 0.88)' : 'rgba(255, 255, 255, 0.94)',
+                  color: theme.swatch.accent,
+                  borderColor: theme.swatch.accent + '40',
+                }}
+              >
+                {displayCode}
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono px-1">
+          <div className={`flex items-center justify-between text-[11px] ${theme.classes.textMuted} font-mono px-1`}>
             <span>Verified Gear Curation</span>
-            <span>ID: {product.id.slice(0, 10)}</span>
+            <span>Item {displayCode}</span>
           </div>
         </div>
 
@@ -156,55 +188,77 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         <div className="space-y-6">
           <div className="space-y-3">
             {/* Category Breadcrumb */}
-            <div className="flex items-center gap-2 text-xs font-medium text-zinc-400">
-              <span className="uppercase tracking-wider font-bold" style={{ color: theme.swatch.accent }}>{categoryName}</span>
-              <span aria-hidden="true" className="text-zinc-600">·</span>
-              <span className="font-mono text-zinc-300 font-bold">{displayCode}</span>
-              <span aria-hidden="true" className="text-zinc-600">·</span>
-              <span className="font-mono text-zinc-400">Amazon {product.marketplace_code || 'US'}</span>
+            <div className={`flex items-center gap-2 text-xs font-medium ${theme.classes.textMuted}`}>
+              <span className="uppercase tracking-wider font-bold" style={{ color: theme.swatch.accent }}>
+                {categoryName}
+              </span>
+              <span aria-hidden="true">·</span>
+              <span className={`font-mono font-bold ${theme.classes.textPrimary}`}>{displayCode}</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono">Amazon {product.marketplace_code || 'US'}</span>
             </div>
 
             {/* Product Title */}
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+            <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight ${theme.classes.textPrimary}`}>
               {product.name}
             </h1>
 
             {/* Short Verdict */}
-            <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal pt-1">
+            <p className={`text-sm sm:text-base ${theme.classes.textSecondary} leading-relaxed font-normal pt-1`}>
               {product.short_description}
             </p>
           </div>
 
-          {/* Primary Affiliate Action Box (Glassmorphism) */}
-          <div className="p-5 sm:p-6 bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl space-y-4 shadow-xl">
+          {/* Primary Affiliate Action Box */}
+          <div
+            className={
+              isManasa
+                ? 'p-5 sm:p-6 bg-[#F4F4F5] border border-zinc-200 rounded-xl space-y-3'
+                : theme.isDark
+                  ? 'p-5 sm:p-6 bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl space-y-4 shadow-xl'
+                  : 'p-5 sm:p-6 bg-zinc-50 border border-zinc-200 rounded-2xl space-y-4 shadow-xs'
+            }
+          >
             <a
               href={product.affiliate_url}
               target="_blank"
               rel="noopener noreferrer sponsored"
               onClick={() => trackOutboundClick(product.id, 'product_detail')}
-              className={`w-full min-h-[48px] px-6 py-3.5 ${theme.classes.accentButton} text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.99]`}
+              className={`w-full min-h-[48px] px-6 py-3.5 ${theme.classes.accentButton} text-sm font-bold ${
+                isManasa ? 'rounded-lg' : 'rounded-xl'
+              } flex items-center justify-center gap-2 transition-all active:scale-[0.99]`}
             >
-              <span>View Product on Amazon</span>
+              <span>{isManasa ? 'Check price on Amazon' : 'View Product on Amazon'}</span>
               <ExternalLink className="w-4 h-4 shrink-0" />
             </a>
 
-            <div className="flex items-center gap-2 text-[11px] text-zinc-400 justify-center">
+            <div className={`flex items-center gap-2 text-[11px] ${theme.classes.textMuted} justify-center text-center`}>
               <ShieldCheck className="w-3.5 h-3.5 shrink-0" style={{ color: theme.swatch.accent }} />
-              <span>Direct official Amazon Associates access link</span>
+              <span>
+                {isManasa
+                  ? 'Opens official Amazon product page · Affiliate link (no extra cost)'
+                  : 'Direct official Amazon Associates access link'}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Editorial Evaluation Section (Why it made the cut) */}
-      <div className="space-y-8 pt-6 border-t border-white/[0.08]">
+      {/* Editorial Evaluation Section */}
+      <div className={`space-y-6 sm:space-y-8 pt-6 border-t ${theme.isDark ? 'border-white/[0.08]' : 'border-zinc-200'}`}>
         {/* Full Editorial Note */}
         {product.description && (
-          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 sm:p-8 space-y-3 shadow-lg">
-            <h2 className="text-sm font-mono uppercase tracking-wider font-bold" style={{ color: theme.swatch.accent }}>
-              Editorial Evaluation & Testing
+          <div
+            className={
+              isManasa
+                ? 'bg-white border border-zinc-200 rounded-xl p-6 sm:p-8 space-y-3'
+                : `${theme.classes.bgCard} border ${theme.classes.borderCard} rounded-2xl p-6 sm:p-8 space-y-3 shadow-lg`
+            }
+          >
+            <h2 className="text-xs sm:text-sm font-mono uppercase tracking-wider font-bold" style={{ color: theme.swatch.accent }}>
+              Editorial Evaluation & Notes
             </h2>
-            <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
+            <p className={`text-sm ${theme.classes.textSecondary} leading-relaxed whitespace-pre-line`}>
               {product.description}
             </p>
           </div>
@@ -214,12 +268,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Key Points */}
           {product.key_points && product.key_points.length > 0 && (
-            <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 space-y-4 shadow-lg">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <div
+              className={
+                isManasa
+                  ? 'bg-white border border-zinc-200 rounded-xl p-6 space-y-4'
+                  : `${theme.classes.bgCard} border ${theme.classes.borderCard} rounded-2xl p-6 space-y-4 shadow-lg`
+              }
+            >
+              <h3 className={`text-sm font-bold ${theme.classes.textPrimary} flex items-center gap-2`}>
+                <CheckCircle2 className={`w-4 h-4 ${theme.isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
                 <span>Key Technical Highlights</span>
               </h3>
-              <ul className="space-y-2.5 text-xs text-zinc-300">
+              <ul className={`space-y-2.5 text-xs ${theme.classes.textSecondary}`}>
                 {product.key_points.map((pt, i) => (
                   <li key={i} className="flex items-start gap-2.5">
                     <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: theme.swatch.accent }} />
@@ -232,15 +292,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
           {/* Who it is useful for */}
           {product.useful_for && product.useful_for.length > 0 && (
-            <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 space-y-4 shadow-lg">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <div
+              className={
+                isManasa
+                  ? 'bg-white border border-zinc-200 rounded-xl p-6 space-y-4'
+                  : `${theme.classes.bgCard} border ${theme.classes.borderCard} rounded-2xl p-6 space-y-4 shadow-lg`
+              }
+            >
+              <h3 className={`text-sm font-bold ${theme.classes.textPrimary} flex items-center gap-2`}>
                 <ShieldCheck className="w-4 h-4 shrink-0" style={{ color: theme.swatch.accent }} />
                 <span>Best Suited For</span>
               </h3>
-              <ul className="space-y-2.5 text-xs text-zinc-300">
+              <ul className={`space-y-2.5 text-xs ${theme.classes.textSecondary}`}>
                 {product.useful_for.map((use, i) => (
                   <li key={i} className="flex items-start gap-2.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                    <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${theme.isDark ? 'bg-emerald-400' : 'bg-emerald-600'}`} />
                     <span className="leading-relaxed">{use}</span>
                   </li>
                 ))}
@@ -251,12 +317,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
         {/* Considerations / Caveats */}
         {product.considerations && (
-          <div className="p-5 bg-amber-950/30 border border-amber-800/40 rounded-2xl text-xs space-y-1.5">
-            <div className="flex items-center gap-2 font-bold text-amber-300">
-              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+          <div
+            className={`p-5 rounded-xl border text-xs space-y-1.5 ${
+              theme.isDark
+                ? 'bg-amber-950/30 border-amber-800/40'
+                : 'bg-amber-50 border-amber-200'
+            }`}
+          >
+            <div className={`flex items-center gap-2 font-bold ${theme.isDark ? 'text-amber-300' : 'text-amber-900'}`}>
+              <AlertCircle className={`w-4 h-4 shrink-0 ${theme.isDark ? 'text-amber-400' : 'text-amber-600'}`} />
               <span>Honest Trade-offs to Consider</span>
             </div>
-            <p className="text-amber-200/90 leading-relaxed pl-6">
+            <p className={`leading-relaxed pl-6 ${theme.isDark ? 'text-amber-200/90' : 'text-amber-900/90'}`}>
               {product.considerations}
             </p>
           </div>
@@ -265,13 +337,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
       {/* Related Products in Category */}
       {relatedProducts.length > 0 && (
-        <div className="space-y-6 pt-6 border-t border-white/[0.08]">
+        <div className={`space-y-6 pt-6 border-t ${theme.isDark ? 'border-white/[0.08]' : 'border-zinc-200'}`}>
           <div>
-            <h2 className="text-lg font-bold text-white">More in {categoryName}</h2>
-            <p className="text-xs text-zinc-400">Other curated picks in this department.</p>
+            <h2 className={`text-lg font-bold ${theme.classes.textPrimary}`}>More in {categoryName}</h2>
+            <p className={`text-xs ${theme.classes.textMuted}`}>Other curated picks in this department.</p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5">
             {relatedProducts.map((rel) => (
               <ProductCard
                 key={rel.id}
